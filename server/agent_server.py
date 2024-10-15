@@ -21,8 +21,8 @@ class Agent:
             batch_size=256,
             warmup_steps=5000,
             buffer_size=int(5e4),
-            update_interval=500,
-            target_update_interval=10000,
+            update_interval=5,
+            target_update_interval=100,
     ):
         self.action_dim = action_dim
         self.epsilon = epsilon
@@ -51,8 +51,6 @@ class Agent:
         self.episode_reward = deque(maxlen=1000)
         self.episode_len = deque(maxlen=1000)
         self.update_flag = False
-        self.last_network_update_steps = 0
-        self.last_target_update_steps = 0
 
     def learn(self):
         mean_loss = 0
@@ -75,6 +73,7 @@ class Agent:
 
     def update_network(self, episode_len):
         total_steps = self.total_steps
+        total_episodes = self.total_episodes
         self.epsilon = max(self.epsilon - self.epsilon_decay * episode_len, self.epsilon_min)
 
         if total_steps < self.warmup_steps:
@@ -83,16 +82,14 @@ class Agent:
         while self.update_flag:
             time.sleep(0.1)
 
-        if total_steps // self.update_interval != self.last_network_update_steps // self.update_interval:
+        if total_episodes % self.update_interval == 0:
             self.update_flag = True
             loss = self.learn()
             self.update_flag = False
-            self.last_network_update_steps = total_steps
             self.writer.add_scalar('loss', loss, total_steps)
 
-        if total_steps // self.target_update_interval != self.last_target_update_steps // self.target_update_interval:
+        if total_episodes % self.target_update_interval == 0:
             self.target_network.load_state_dict(self.network.state_dict())
-            self.last_target_update_steps = total_steps
             torch.save(self.network.state_dict(), 'checkpoints/dqn_{}.pt'.format(total_steps))
 
     def update_plot(self, r_seq):
