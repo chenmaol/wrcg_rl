@@ -45,7 +45,8 @@ def train(wrcg_env, agent, ip, port):
                     break
                 if done:
                     break
-            agent.get_data(socket)
+            if done or end:
+                agent.get_data(socket)
 
 
 if __name__ == '__main__':

@@ -125,15 +125,15 @@ class Env():
         self.reset_key()
 
         self.action.move_mouse(self.loc_real(self.restart_loc))
-        self.action.left_click()
+        self.action.press_key('enter')
         time.sleep(0.2)
 
         self.action.move_mouse(self.loc_real(self.restart_confirm_loc))
-        self.action.left_click()
+        self.action.press_key('enter')
         time.sleep(10)
 
         self.action.move_mouse(self.loc_real(self.start_loc))
-        self.action.left_click()
+        self.action.press_key('enter')
 
         self.init_states()
         return self.get_states()
