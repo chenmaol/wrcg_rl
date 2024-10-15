@@ -1,0 +1,5 @@
+numpysocket
+pywin32
+https://download.pytorch.org/whl/cu111/torch-1.9.1%2Bcu111-cp39-cp39-win_amd64.whl
+pillow==9.5.0
+easyocr==1.5.0

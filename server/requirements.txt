@@ -1,0 +1,3 @@
+numpysocket
+https://download.pytorch.org/whl/cu111/torch-1.9.1%2Bcu111-cp39-cp39-win_amd64.whl
+tqdm
