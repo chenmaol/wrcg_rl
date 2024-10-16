@@ -221,6 +221,7 @@ class Env():
 
         # if game end
         self.action.move_mouse(self.loc_real(self.highlight_ctr), repeat=5, interval=0.001)
+        self.action.press_key('enter', internal=0.01)
         end = True if self.game_end_check(img_) else False
 
         # if car stack (done)

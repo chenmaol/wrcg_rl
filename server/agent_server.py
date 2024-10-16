@@ -17,6 +17,7 @@ class Agent:
             lr=0.00025,
             epsilon=0.8,
             epsilon_min=0.1,
+            epsilon_decay=5e-4,
             gamma=0.99,
             batch_size=256,
             warmup_steps=5000,
@@ -44,7 +45,7 @@ class Agent:
 
         self.total_steps = 0
         self.total_episodes = 0
-        self.epsilon_decay = (epsilon - epsilon_min) / 1e5
+        self.epsilon_decay = (epsilon - epsilon_min) * epsilon_decay
         self.epsilon_min = epsilon_min
         self.wait_time = 60.0
         self.writer = SummaryWriter(log_dir='./logs/exp')
