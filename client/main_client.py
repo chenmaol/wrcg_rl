@@ -5,22 +5,26 @@ import numpy as np
 import time
 import torch
 
-def evaluate(wrcg_env, agent, steps):
+def single_run():
     ret = 0
-    agent.network.load_state_dict(torch.load('checkpoints/dqn_{}.pt'.format(steps)))
-    s = wrcg_env.reset_game()
-    for i in range(1000):
+    s = wrcg_env.reset_car()
+    for i in range(max_seqlen):
         a = agent.act(s, training=False)
-        s_prime, r, done, err = wrcg_env.step(a)
-        if done or err == 1 or err == 2:
-            s = wrcg_env.reset_car()
-            continue
-        if err == 3:
+        s_prime, r, done, end = wrcg_env.step(a)
+        if end:
             s = wrcg_env.reset_game()
-            continue
+            break
+        if done:
+            break
         s = s_prime
         ret += r
     return np.round(ret, 4)
+
+def evaluate(checkpoint_steps, eval_iterations=5):
+    agent.network.load_state_dict(torch.load('checkpoints/dqn_{}.pt'.format(checkpoint_steps)))
+    for eval_t in range(eval_iterations):
+        cum_r = single_run()
+        print(cum_r)
 
 
 def train(wrcg_env, agent, ip, port):
@@ -50,12 +54,13 @@ def train(wrcg_env, agent, ip, port):
 
 
 if __name__ == '__main__':
-    input_channel = 4
+    input_channel = 3
     action_dim = 4
     max_seqlen = 1000
+    states_with_speed = True
 
     wrcg_env = Env()
     agent = Agent(input_channel, action_dim)
-    train(wrcg_env, agent, "10.19.226.34", 9999)
+    # train(wrcg_env, agent, "10.19.226.34", 9999)
 
-    # print(evaluate(wrcg_env, agent, 160000))
+    print(evaluate(160000))

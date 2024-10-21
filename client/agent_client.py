@@ -1,4 +1,4 @@
-from model import CNNActionValue
+from model import CNNActionValue, CNNActionValueWithSpeed
 import numpy as np
 import torch
 
@@ -7,9 +7,14 @@ class Agent:
             self,
             state_dim,
             action_dim,
+            states_with_speed=False,
     ):
         self.action_dim = action_dim
-        self.network = CNNActionValue(state_dim, action_dim)
+        self.states_with_speed = states_with_speed
+        if self.states_with_speed:
+            self.network = CNNActionValueWithSpeed(state_dim, action_dim)
+        else:
+            self.network = CNNActionValue(state_dim, action_dim)
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
         self.network.to(self.device)
         self.epsilon = 1
@@ -20,8 +25,14 @@ class Agent:
         if training and np.random.rand() < self.epsilon:
             a = np.random.randint(0, self.action_dim)
         else:
-            x = torch.from_numpy(x).float().unsqueeze(0).to(self.device)
-            q = self.network(x)
+            if self.states_with_speed:
+                x, speed = x
+                x = torch.from_numpy(x).float().unsqueeze(0).to(self.device)
+                speed = torch.from_numpy(speed).float().unsqueeze(0).to(self.device)
+                q = self.network((x, speed))
+            else:
+                x = torch.from_numpy(x).float().unsqueeze(0).to(self.device)
+                q = self.network(x)
             a = torch.argmax(q).item()
         return a
 

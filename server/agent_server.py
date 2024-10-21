@@ -1,6 +1,6 @@
 import time
 
-from model import CNNActionValue
+from model import CNNActionValue, CNNActionValueWithSpeed
 import torch.nn.functional as F
 import torch
 from buffer import ReplayBuffer
@@ -24,6 +24,7 @@ class Agent:
             buffer_size=int(5e4),
             update_interval=5,
             target_update_interval=100,
+            states_with_speed=False
     ):
         self.action_dim = action_dim
         self.epsilon = epsilon
@@ -32,9 +33,14 @@ class Agent:
         self.warmup_steps = warmup_steps
         self.target_update_interval = target_update_interval
         self.update_interval = update_interval
+        self.states_with_speed = states_with_speed
 
-        self.network = CNNActionValue(state_dim[0], action_dim)
-        self.target_network = CNNActionValue(state_dim[0], action_dim)
+        if self.states_with_speed:
+            self.network = CNNActionValueWithSpeed(state_dim[0], action_dim)
+            self.target_network = CNNActionValueWithSpeed(state_dim[0], action_dim)
+        else:
+            self.network = CNNActionValue(state_dim[0], action_dim)
+            self.target_network = CNNActionValue(state_dim[0], action_dim)
         self.target_network.load_state_dict(self.network.state_dict())
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr)
 

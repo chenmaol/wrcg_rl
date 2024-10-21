@@ -20,6 +20,8 @@ class Env():
                  screen_size=(1920, 1080),
                  resize_size=(112, 112),
                  fps=2,
+                 num_concat_image=4,
+                 states_with_speed=False,
                  ):
         self.game_window_name = game_window_name
         self.ratio = 1
@@ -30,12 +32,17 @@ class Env():
         self.stack_penalty = 20
         self.action_penalty = 0.1
         self.gray_scale = True
-        self.num_concat_image = 4
+        self.num_concat_image = num_concat_image
         self.states = deque(maxlen=self.num_concat_image)
         self.action_spaces = ['w', 'wa', 'wd', '']
         self.screen_size = screen_size
         self.resize_size = resize_size
         self.fps = fps
+
+        self.states_with_speed = states_with_speed
+
+        if self.states_with_speed:
+            assert self.num_concat_image == 1
 
         # button loc
         self.highlight_loc = [0, 0.4417, 0.0336, 0.5]
@@ -85,6 +92,8 @@ class Env():
         self.states.clear()
         img = self.get_frame()
         state = self.img_preprocess(img)
+        if self.states_with_speed:
+            state = (state, 0)
         for i in range(self.num_concat_image):
             self.states.append(state)
         self.repeat_nums = 0
@@ -211,12 +220,17 @@ class Env():
         # get current capture
         img_ = self.get_frame()
 
-        # calc speed and reward
+        # calc speed
         speed_ = self.get_speed(img_)
+
+        # calc reward
         reward = self.calc_reward(speed_)
 
         # update states
         state_ = self.img_preprocess(img_)
+
+        if self.states_with_speed:
+            state_ = (state_, speed_)
         self.states.append(state_)
 
         # if game end

@@ -39,12 +39,13 @@ def process(conn, addr, pbar):
 
 
 if __name__ == '__main__':
-    stack_frames = 4
+    stack_frames = 1
     action_dim = 4
     img_size = 112
+    states_with_speed = True
 
     state_dim = (stack_frames, img_size, img_size)
-    agent = Agent(state_dim, action_dim)
+    agent = Agent(state_dim, action_dim, states_with_speed=states_with_speed)
 
     continue_steps = 0
 
