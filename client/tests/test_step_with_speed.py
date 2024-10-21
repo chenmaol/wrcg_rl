@@ -5,11 +5,13 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from env import Env
 from agent_client import Agent
-
-input_channel = 4
+input_channel = 3
 action_dim = 4
-env = Env()
-agent = Agent(input_channel, action_dim)
+max_seqlen = 1000
+states_with_speed = True
+agent = Agent(input_channel, action_dim, states_with_speed=states_with_speed)
+env = Env(states_with_speed=True, num_concat_image=1, gray_scale=False)
+
 s = env.reset_car()
 while True:
     t0 = time.time()

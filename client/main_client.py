@@ -58,9 +58,11 @@ if __name__ == '__main__':
     action_dim = 4
     max_seqlen = 1000
     states_with_speed = True
-
-    wrcg_env = Env()
-    agent = Agent(input_channel, action_dim)
+    # no speed
+    # wrcg_env = Env()
+    # with speed
+    wrcg_env = Env(states_with_speed=states_with_speed, num_concat_image=1, gray_scale=False)
+    agent = Agent(input_channel, action_dim, states_with_speed=states_with_speed)
     # train(wrcg_env, agent, "10.19.226.34", 9999)
 
     print(evaluate(160000))

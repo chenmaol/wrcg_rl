@@ -27,8 +27,8 @@ class Agent:
         else:
             if self.states_with_speed:
                 x, speed = x
-                x = torch.from_numpy(x).float().unsqueeze(0).to(self.device)
-                speed = torch.from_numpy(speed).float().unsqueeze(0).to(self.device)
+                x = torch.from_numpy(x).float().unsqueeze(0).to(self.device).permute(0, 3, 1, 2)
+                speed = torch.from_numpy(np.array([speed])).float().unsqueeze(0).to(self.device)
                 q = self.network((x, speed))
             else:
                 x = torch.from_numpy(x).float().unsqueeze(0).to(self.device)

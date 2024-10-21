@@ -22,6 +22,7 @@ class Env():
                  fps=2,
                  num_concat_image=4,
                  states_with_speed=False,
+                 gray_scale=True,
                  ):
         self.game_window_name = game_window_name
         self.ratio = 1
@@ -31,7 +32,7 @@ class Env():
         self.reward_coef = 5
         self.stack_penalty = 20
         self.action_penalty = 0.1
-        self.gray_scale = True
+        self.gray_scale = gray_scale
         self.num_concat_image = num_concat_image
         self.states = deque(maxlen=self.num_concat_image)
         self.action_spaces = ['w', 'wa', 'wd', '']
@@ -74,7 +75,7 @@ class Env():
         """
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.resize(img, self.resize_size)
+        img = cv2.resize(img, self.resize_size) / 255.
         return img
 
     def get_states(self):
@@ -82,7 +83,10 @@ class Env():
         get complete states.
         :return: states
         """
-        return np.stack(list(self.states), axis=0)
+        if self.states_with_speed:
+            return list(self.states)[0]
+        else:
+            return np.stack(list(self.states), axis=0)
 
     def init_states(self):
         """

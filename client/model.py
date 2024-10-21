@@ -62,11 +62,11 @@ class CNNActionValueWithSpeed(nn.Module):
         self.value = nn.Linear(64 + 1, 1)
 
     def forward(self, x):
-        x, speed = x
-        x = self.cnn(x)
-        x = x.view((-1, self.in_features))
-        x = self.pre_fusion(x)
-        x = torch.cat((x, speed), dim=1)
-        advantage = self.advantage(x)
-        value = self.value(x)
+        img, speed = x
+        f = self.cnn(img)
+        f = f.reshape((-1, self.in_features))
+        f = self.pre_fusion(f)
+        out = torch.cat((f, speed), dim=1)
+        advantage = self.advantage(out)
+        value = self.value(out)
         return value + advantage - advantage.mean()
