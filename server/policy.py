@@ -52,11 +52,11 @@ class DQN:
         for i in range(K):
             sample_data = buffer.sample(self.batch_size)
 
-            next_q = self.target_network(sample_data["state_prime"]).to(self.device).detach()
-            current_q = self.network(sample_data["state_prime"]).to(self.device).detach()
-            td_target = sample_data["reward"].to(self.device) + \
-                        (1. - sample_data["done"].to(self.device)) * self.gamma * next_q.gather(1, torch.max(current_q, 1)[1].unsqueeze(1))
-            loss = F.mse_loss(self.network(sample_data["state"].to(self.device)).gather(1, sample_data["action"].to(self.device).long()), td_target)
+            next_q = self.target_network(sample_data["state_prime"]).detach()
+            current_q = self.network(sample_data["state_prime"]).detach()
+            td_target = sample_data["reward"] + \
+                        (1. - sample_data["done"]) * self.gamma * next_q.gather(1, torch.max(current_q, 1)[1].unsqueeze(1))
+            loss = F.mse_loss(self.network(sample_data["state"]).gather(1, sample_data["action"].long()), td_target)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()

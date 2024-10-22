@@ -44,7 +44,7 @@ class ReplayBuffer:
             if isinstance(value, dict):
                 output[key] = self.sample_dict_recursively(value, ind)
             else:
-                output[key] = torch.FloatTensor(value[ind] / self.norm[key])
+                output[key] = torch.FloatTensor(value[ind] / self.norm[key]).to("cuda")
         return output
 
     def update(self, data):
