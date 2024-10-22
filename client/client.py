@@ -33,6 +33,7 @@ class Client:
                 # get next states, reward, done, by env
                 data = self.env.step(a)
                 data["state"] = s
+                data["action"] = a
                 # send data to server
                 self.send_data(data)
                 # update each step

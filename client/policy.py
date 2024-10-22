@@ -19,8 +19,8 @@ class DQN:
         if training and np.random.rand() < self.epsilon:
             a = np.random.randint(0, self.action_head)
         else:
-            x = self.preprocess(x)
-            q = self.model(x)
+            f = self.preprocess(x)
+            q = self.model(f)
             a = torch.argmax(q).item()
         return a
 

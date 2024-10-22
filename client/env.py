@@ -145,9 +145,6 @@ class WRCGEnv():
         self.action.move_mouse(self.loc_real(self.start_loc))
         self.action.press_key('enter')
 
-        self.init_states()
-        return self.get_states()
-
     def pause_game(self):
         """
         press esc
