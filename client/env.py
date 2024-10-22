@@ -10,21 +10,15 @@ from utils import SpeedRecognizer, HighlightRecognizer, Recorder, Action
 from collections import deque
 
 
-class Env():
+class WRCGEnv():
     """
     Environment wrapper for WRCG
     """
 
     def __init__(self,
-                 game_window_name='WRCG',
-                 screen_size=(1920, 1080),
-                 resize_size=(112, 112),
-                 fps=2,
-                 num_concat_image=4,
-                 states_with_speed=False,
-                 gray_scale=True,
+                 config,
                  ):
-        self.game_window_name = game_window_name
+        self.game_window_name = "WRCG"
         self.ratio = 1
         self.repeat_nums = 0
         self.repeat_thres = 10
@@ -32,18 +26,17 @@ class Env():
         self.reward_coef = 5
         self.stack_penalty = 20
         self.action_penalty = 0.1
-        self.gray_scale = gray_scale
-        self.num_concat_image = num_concat_image
-        self.states = deque(maxlen=self.num_concat_image)
+        self.gray_scale = config["gray_scale"]
+        self.num_concat_image = config["num_concat_image"]
+        self.states = {"image": deque(maxlen=self.num_concat_image)}
         self.action_spaces = ['w', 'wa', 'wd', '']
-        self.screen_size = screen_size
-        self.resize_size = resize_size
-        self.fps = fps
+        self.screen_size = (1920, 1080)
+        self.resize_size = config["state"]["image"]["dim"][1:]
+        self.fps = config["fps"]
 
-        self.states_with_speed = states_with_speed
-
-        if self.states_with_speed:
-            assert self.num_concat_image == 1
+        self.with_speed = True if "speed" in config["state"] else False
+        if self.with_speed:
+            self.states["speed"] = deque(maxlen=self.num_concat_image)
 
         # button loc
         self.highlight_loc = [0, 0.4417, 0.0336, 0.5]
@@ -55,9 +48,9 @@ class Env():
 
         # tools
         self.action = Action()
-        self.recorder = Recorder(fps=fps, frame_size=screen_size)
-        self.speedRecognizer = SpeedRecognizer(img_size=screen_size)
-        self.highlightRecognizer = HighlightRecognizer(img_size=screen_size, loc=self.highlight_loc)
+        self.recorder = Recorder(fps=self.fps, frame_size=self.screen_size)
+        self.speedRecognizer = SpeedRecognizer(img_size=self.screen_size)
+        self.highlightRecognizer = HighlightRecognizer(img_size=self.screen_size, loc=self.highlight_loc)
 
         # switch to game window
         hwnd = win32gui.FindWindow(None, self.game_window_name)
@@ -75,7 +68,7 @@ class Env():
         """
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = cv2.resize(img, self.resize_size) / 255.
+        img = cv2.resize(img, self.resize_size)
         return img
 
     def get_states(self):
@@ -83,23 +76,27 @@ class Env():
         get complete states.
         :return: states
         """
-        if self.states_with_speed:
-            return list(self.states)[0]
-        else:
-            return np.stack(list(self.states), axis=0)
+        states = {"image": np.stack(list(self.states["image"]), axis=0)}
+        if self.with_speed:
+            states["speed"] = np.stack(list(self.states["speed"]), axis=0)
+        return states
 
     def init_states(self):
         """
         initial states when reset
         """
         self.reset_key()
-        self.states.clear()
+        self.states["image"].clear()
+        if self.with_speed:
+            self.states["speed"].clear()
+
         img = self.get_frame()
         state = self.img_preprocess(img)
-        if self.states_with_speed:
-            state = (state, 0)
+
         for i in range(self.num_concat_image):
-            self.states.append(state)
+            self.states["image"].append(state)
+            if self.with_speed:
+                self.states["speed"].append(0)
         self.repeat_nums = 0
 
     def reset_key(self):
@@ -233,9 +230,10 @@ class Env():
         # update states
         state_ = self.img_preprocess(img_)
 
-        if self.states_with_speed:
-            state_ = (state_, speed_)
-        self.states.append(state_)
+        self.states["image"].append(state_)
+        if self.with_speed:
+            self.states["speed"].append(speed_)
+
 
         # if game end
         self.action.move_mouse(self.loc_real(self.highlight_ctr), repeat=5, interval=0.001)
@@ -249,6 +247,14 @@ class Env():
         done = True if self.repeat_nums >= self.repeat_thres else False
         if done:
             reward -= self.stack_penalty
-        return self.get_states(), reward, done, end
+
+        if end:
+            self.reset_game()
+
+        return {
+            "state": self.get_states(),
+            "reward": reward,
+            "done": done or end
+            }
 
 
