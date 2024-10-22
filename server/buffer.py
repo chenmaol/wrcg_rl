@@ -10,7 +10,7 @@ class ReplayBuffer:
         self.max_size = int(max_size)
         self.norm = {}
         config["state_prime"] = config["state"]
-        self.key_words = ["state", "image", "speed", "reward", "done", "action"]
+        self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
         self.buffer = self.create_dict_recursively(config)
 
     def create_dict_recursively(self, d):
