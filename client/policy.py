@@ -25,9 +25,10 @@ class DQN:
         return a
 
     def preprocess(self, x):
+        output = {}
         for key in self.state_keys:
-            x[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device) / self.config["state"][key]["norm"]
-        return x
+            output[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device) / self.config["state"][key]["norm"]
+        return output
 
     def update_epsilon(self, epsilon):
         self.epsilon = epsilon
