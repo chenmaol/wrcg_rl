@@ -252,7 +252,7 @@ class WRCGEnv():
             self.reset_game()
 
         return {
-            "state": self.get_states(),
+            "state_prime": self.get_states(),
             "reward": reward,
             "done": done or end
             }

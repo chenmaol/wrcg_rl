@@ -32,10 +32,11 @@ class Client:
                 a = self.policy.act(s)
                 # get next states, reward, done, by env
                 data = self.env.step(a)
+                data["state"] = s
                 # send data to server
                 self.send_data(data)
                 # update each step
-                s = data["state"]
+                s = data["state_prime"]
                 if data["done"]:
                     self.sync_paras()
                     break
