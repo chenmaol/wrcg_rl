@@ -68,9 +68,9 @@ class WRCGEnv():
         """
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = np.expand_dims(img, axis=-1)
         img = cv2.resize(img, self.resize_size)
-        if not self.gray_scale:
-            img = np.transpose(img, (2, 0, 1))
+        img = np.transpose(img, (2, 0, 1))
         return img
 
     def get_states(self):
@@ -78,9 +78,9 @@ class WRCGEnv():
         get complete states.
         :return: states
         """
-        states = {"image": np.stack(list(self.states["image"]), axis=0)}
+        states = {"image": np.concatenate(list(self.states["image"]), axis=0)}
         if self.with_speed:
-            states["speed"] = np.stack(list(self.states["speed"]), axis=0)
+            states["speed"] = np.concatenate(list(self.states["speed"]), axis=0)
         return states
 
     def init_states(self):
