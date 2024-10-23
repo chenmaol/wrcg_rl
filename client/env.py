@@ -69,6 +69,8 @@ class WRCGEnv():
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img = cv2.resize(img, self.resize_size)
+        if not self.gray_scale:
+            img = np.transpose(img, (2, 0, 1))
         return img
 
     def get_states(self):
