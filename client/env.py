@@ -98,7 +98,7 @@ class WRCGEnv():
         for i in range(self.num_concat_image):
             self.states["image"].append(state)
             if self.with_speed:
-                self.states["speed"].append(0)
+                self.states["speed"].append(np.array([0], dtype=np.uint8))
         self.repeat_nums = 0
 
     def reset_key(self):
@@ -231,8 +231,7 @@ class WRCGEnv():
 
         self.states["image"].append(state_)
         if self.with_speed:
-            self.states["speed"].append(speed_)
-
+            self.states["speed"].append(np.array([speed_], dtype=np.uint8))
 
         # if game end
         self.action.move_mouse(self.loc_real(self.highlight_ctr), repeat=5, interval=0.001)
