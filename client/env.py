@@ -29,7 +29,7 @@ class WRCGEnv():
         self.gray_scale = config["gray_scale"]
         self.num_concat_image = config["num_concat_image"]
         self.states = {"image": deque(maxlen=self.num_concat_image)}
-        self.action_spaces = ['w', 'wa', 'wd', '']
+        self.action_spaces = config["action"]['spaces']
         self.screen_size = (1920, 1080)
         self.resize_size = config["state"]["image"]["dim"][1:]
         self.fps = config["fps"]
