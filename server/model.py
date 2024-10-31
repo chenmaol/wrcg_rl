@@ -81,6 +81,8 @@ class MultiInputActor(nn.Module):
         self.mu = nn.Linear(self.hid_channel, action_head)
         self.log_std = nn.Linear(self.hid_channel, action_head)
 
+        self.epsilon = 1e-6
+
     def forward(self, x, deterministic=False, with_logprob=True):
         f = self.cnn(x["image"])
         f = f.view((-1, self.in_features))
