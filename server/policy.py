@@ -70,10 +70,9 @@ class DQN:
         if total_steps < self.warmup_steps:
             return
 
-        while self.update_flag:
-            time.sleep(0.1)
-
         if total_episodes % self.update_interval == 0:
+            while self.update_flag:
+                time.sleep(0.1)
             self.update_flag = True
             loss = self.learn(buffer)
             self.update_flag = False
@@ -239,10 +238,9 @@ class SAC:
         if total_steps < self.warmup_steps:
             return
 
-        while self.update_flag:
-            time.sleep(0.1)
-
         if total_episodes % self.update_interval == 0:
+            while self.update_flag:
+                time.sleep(0.1)
             self.update_flag = True
             loss = self.learn(buffer)
             self.update_flag = False

@@ -22,6 +22,7 @@ class Client:
     def sync_paras(self):
         received_data = self.get_data()
         self.policy.update_weights(received_data["checkpoint"])
+        self.policy.total_steps = received_data["total_steps"]
 
     def train(self):
         while True:

@@ -33,7 +33,7 @@ class Server:
 
     def sync_paras(self, conn):
         d = self.policy.actor.state_dict()
-        data = {"checkpoint": {}}
+        data = {"checkpoint": {}, "total_steps": self.policy.total_steps}
         for k, v in d.items():
             data["checkpoint"][k] = v.cpu().numpy()
         self.send_data(conn, data)
