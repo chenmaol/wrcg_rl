@@ -157,7 +157,6 @@ class SAC:
         self.update_flag = False
 
     def learn(self, buffer):
-
         ent_coef_losses = 0
         actor_losses, critic_losses = 0, 0
         # log_probs = []

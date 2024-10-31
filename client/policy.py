@@ -44,7 +44,7 @@ class DQN:
 class SAC:
     def __init__(self, config):
         self.device = "cuda"
-        self.warmup_steps = 0
+        self.warmup_steps = config["client_warmup_steps"]
         self.total_steps = 0
 
         self.actor = MultiInputActor(config).to(self.device)

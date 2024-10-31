@@ -32,7 +32,7 @@ class Server:
                 t.start()
 
     def sync_paras(self, conn):
-        d = self.policy.network.state_dict()
+        d = self.policy.actor.state_dict()
         data = {"checkpoint": {}, "epsilon": self.policy.epsilon}
         for k, v in d.items():
             data["checkpoint"][k] = v.cpu().numpy()

@@ -4,6 +4,7 @@ base:
   num_concat_image: 1
   max_episode_length: 1000
   wait_time: 60.0
+  client_warmup_steps: 50
   policy: SAC
   env: WRCGContinuousEnv
   state:
