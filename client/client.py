@@ -22,7 +22,6 @@ class Client:
     def sync_paras(self):
         received_data = self.get_data()
         self.policy.update_weights(received_data["checkpoint"])
-        self.policy.update_epsilon(received_data["epsilon"])
 
     def train(self):
         while True:

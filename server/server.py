@@ -33,7 +33,7 @@ class Server:
 
     def sync_paras(self, conn):
         d = self.policy.actor.state_dict()
-        data = {"checkpoint": {}, "epsilon": self.policy.epsilon}
+        data = {"checkpoint": {}}
         for k, v in d.items():
             data["checkpoint"][k] = v.cpu().numpy()
         self.send_data(conn, data)
@@ -94,4 +94,4 @@ class Server:
 
 
 if __name__ == '__main__':
-    server = Server("configs/exp1.yaml")
+    server = Server("configs/exp1_sac.yaml")
