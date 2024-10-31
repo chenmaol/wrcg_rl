@@ -1,4 +1,4 @@
-from model import MultiInputModel
+from model import MultiInputModel, MultiInputActor, MultiInputCritic
 import numpy as np
 import torch
 
@@ -12,7 +12,6 @@ class DQN:
         self.action_head = config["action"]["head"]
         self.state_keys = config["state"].keys()
         self.config = config
-
 
     @torch.no_grad()
     def act(self, x, training=True):
@@ -42,5 +41,43 @@ class DQN:
             p.requires_grad = False
 
 
+class SAC:
+    def __init__(self, config):
+        self.device = "cuda"
+        self.warmup_steps = 0
+        self.total_steps = 0
 
+        self.actor = MultiInputActor(config).to(self.device)
+
+        for p in self.actor.parameters():
+            p.requires_grad = False
+
+        self.action_head = config["action"]["head"]
+        self.state_keys = config["state"].keys()
+
+        self.config = config
+
+    @torch.no_grad()
+    def act(self, x, training=True):
+        self.total_steps += 1
+        if self.total_steps > self.warmup_steps:
+            f = self.preprocess(x)
+            a = self.actor(f, deterministic=False, with_logprob=False)[0].detach().cpu().numpy()[0]
+        else:
+            a = np.random.uniform(-1, 1, self.action_head)
+        return a
+
+    def preprocess(self, x):
+        output = {}
+        for key in self.state_keys:
+            output[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device) / self.config["state"][key]["norm"]
+        return output
+
+    def update_weights(self, weights):
+        model_dict = self.actor.state_dict()
+        for (k, v), new_v in zip(model_dict.items(), weights.values()):
+            model_dict[k] = torch.Tensor(new_v)
+        self.actor.load_state_dict(model_dict)
+        for p in self.actor.parameters():
+            p.requires_grad = False
 

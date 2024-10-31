@@ -8,7 +8,7 @@ import pickle
 import yaml
 import struct
 
-from policy import DQN
+from policy import DQN, SAC
 from buffer import ReplayBuffer
 
 
@@ -20,7 +20,7 @@ class Server:
         sock.bind(("", 9999))
         sock.listen()
 
-        self.policy = DQN(self.config)
+        self.policy = eval(self.config["base"]["policy"])(self.config)
         self.buffer = ReplayBuffer(self.config["base"], self.config["train"]["buffer_size"])
 
         with tqdm(ncols=100, leave=True) as pbar:

@@ -2,8 +2,9 @@ import socket
 import struct
 import pickle
 
-from policy import DQN
-from env import WRCGEnv
+from policy import DQN, SAC
+from env import WRCGDiscreteEnv, WRCGContinuousEnv
+
 
 class Client:
     def __init__(self, ip, port):
@@ -13,8 +14,8 @@ class Client:
         self.wait_time = 60.0
 
         self.base_config = self.get_data()
-        self.policy = DQN(self.base_config)
-        self.env = WRCGEnv(self.base_config)
+        self.policy = eval(self.base_config['policy'])(self.base_config)
+        self.env = eval(self.base_config['env'])(self.base_config)
 
         self.sync_paras()
 
@@ -67,6 +68,7 @@ class Client:
 
         self.sock.sendall(struct.pack('>Q', data_len))
         self.sock.sendall(data)
+
 
 if __name__ == '__main__':
     ip, port = "10.19.226.34", 9999

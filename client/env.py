@@ -10,7 +10,7 @@ from utils import SpeedRecognizer, HighlightRecognizer, Recorder, Action
 from collections import deque
 
 
-class WRCGEnv():
+class WRCGBaseEnv:
     """
     Environment wrapper for WRCG
     """
@@ -22,7 +22,7 @@ class WRCGEnv():
         self.ratio = 1
         self.repeat_nums = 0
         self.repeat_thres = 10
-        self.reward_max_speed = 36
+        self.reward_max_speed = 30
         self.reward_coef = 5
         self.stack_penalty = 20
         self.action_penalty = 0.1
@@ -193,7 +193,7 @@ class WRCGEnv():
         :param speed: speed of current state
         :return: reward of current state
         """
-        return min(speed, self.reward_max_speed) / self.reward_max_speed * self.reward_coef - self.action_penalty
+        raise NotImplemented
 
     def game_end_check(self, img):
         """
@@ -202,6 +202,27 @@ class WRCGEnv():
         :return: end flag
         """
         return self.highlightRecognizer.check_highlight(img)
+
+    def step(self, action):
+        raise NotImplemented
+
+
+class WRCGDiscreteEnv(WRCGBaseEnv):
+    """
+    Environment wrapper for WRCG
+    """
+    def __init__(self,
+                 config,
+                 ):
+        super().__init__(config)
+
+    def calc_reward(self, speed):
+        """
+        reward function
+        :param speed: speed of current state
+        :return: reward of current state
+        """
+        return min(speed, self.reward_max_speed) / self.reward_max_speed * self.reward_coef - self.action_penalty
 
     def step(self, action):
         # do actions
@@ -256,3 +277,76 @@ class WRCGEnv():
             }
 
 
+class WRCGContinuousEnv(WRCGBaseEnv):
+    """
+    Environment wrapper for WRCG
+    """
+    def __init__(self,
+                 config,
+                 ):
+        super().__init__(config)
+
+    def calc_reward(self, speed):
+        """
+        reward function
+        :param speed: speed of current state
+        :return: reward of current state
+        """
+        return min(speed / self.reward_max_speed, 1.0)
+
+    def step(self, action):
+        # take action
+        t1 = (action[0] + 1) / self.fps / 2
+        d = 1 if action[1] > 0 else 2
+        t2 = abs(action[1]) / self.fps
+        self.action.down_key(self.action_spaces[0])
+        self.action.down_key(self.action_spaces[d])
+        time.sleep(min(t1, t2))
+        if t1 >= t2:
+            self.action.up_key(self.action_spaces[d])
+        else:
+            self.action.up_key(self.action_spaces[0])
+        time.sleep(max(t1, t2) - min(t1, t2))
+        if t1 >= t2:
+            self.action.up_key(self.action_spaces[0])
+        else:
+            self.action.up_key(self.action_spaces[d])
+        time.sleep(1 / self.fps - max(t1, t2))
+
+        # get current capture
+        img_ = self.get_frame()
+
+        # calc speed
+        speed_ = self.get_speed(img_)
+
+        # calc reward
+        reward = self.calc_reward(speed_)
+
+        # update states
+        state_ = self.img_preprocess(img_)
+
+        self.states["image"].append(state_)
+        if self.with_speed:
+            self.states["speed"].append(np.array([speed_], dtype=np.uint8))
+
+        # if game end
+        self.action.move_mouse(self.loc_real(self.highlight_ctr), repeat=5, interval=0.001)
+        end = True if self.game_end_check(img_) else False
+
+        # if car stack (done)
+        if speed_ == 0:
+            self.repeat_nums += 1
+        else:
+            self.repeat_nums = 0
+        done = True if self.repeat_nums >= self.repeat_thres else False
+        if done:
+            reward = -1
+
+        if end:
+            self.reset_game()
+
+        return {
+            "state_prime": self.get_states(),
+            "reward": reward,
+            "done": done or end
+            }
