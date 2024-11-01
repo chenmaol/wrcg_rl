@@ -292,7 +292,7 @@ class WRCGContinuousEnv(WRCGBaseEnv):
         :param speed: speed of current state
         :return: reward of current state
         """
-        return min(speed / self.reward_max_speed, 1.0)
+        return min(speed / self.reward_max_speed, 1.0) * self.reward_coef - self.action_penalty
 
     def step(self, action):
         # take action
@@ -340,7 +340,7 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             self.repeat_nums = 0
         done = True if self.repeat_nums >= self.repeat_thres else False
         if done:
-            reward = -1
+            reward = -self.stack_penalty
 
         if end:
             self.reset_game()
