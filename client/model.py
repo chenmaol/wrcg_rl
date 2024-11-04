@@ -76,7 +76,7 @@ class MultiInputActor(nn.Module):
             nn.ReLU(),
         )
 
-        if "speed" in self.config["state"]:
+        if self.config["with_speed"]:
             self.hid_channel += 1
 
         self.mu = nn.Linear(self.hid_channel, action_head)
@@ -88,7 +88,7 @@ class MultiInputActor(nn.Module):
         f = self.cnn(x["image"] / self.norm["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)
-        if "speed" in self.config["state"]:
+        if self.config["with_speed"]:
             f = torch.cat((f, x["speed"] / self.norm["speed"]), dim=1)
 
         mu = self.mu(f)
@@ -144,7 +144,7 @@ class MultiInputCritic(nn.Module):
             nn.ReLU(),
         )
 
-        if "speed" in self.config["state"]:
+        if self.config["with_speed"]:
             self.hid_channel += 1
         self.q1 = nn.Sequential(
             nn.Linear(self.hid_channel + action_head, 64),
@@ -161,7 +161,7 @@ class MultiInputCritic(nn.Module):
         f = self.cnn(x["image"] / self.norm["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)
-        if "speed" in self.config["state"]:
+        if self.config["with_speed"]:
             f = torch.cat((f, x["speed"] / self.norm["image"]), dim=1)
         f = torch.cat([f, a], dim=1)
         return self.q1(f), self.q2(f)

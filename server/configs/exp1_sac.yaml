@@ -1,7 +1,7 @@
 
 env:
   name: WRCGContinuousEnv
-  with_speed: true
+  with_speed: &with_speed true
   repeat_thres: 10
   reward_max_speed: 30
   reward_coef: 1
@@ -46,6 +46,7 @@ policy:
   wait_time: 60.0
   model:
     action_head: *action_head
+    with_speed: *with_speed
     input_channel: 3
     norm:
       image: 255.
