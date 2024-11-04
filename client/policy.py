@@ -26,7 +26,7 @@ class DQN:
     def preprocess(self, x):
         output = {}
         for key in self.state_keys:
-            output[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device) / self.config["state"][key]["norm"]
+            output[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device)
         return output
 
     def update_epsilon(self, epsilon):
@@ -47,7 +47,7 @@ class SAC:
         self.warmup_steps = config["training"]["warmup_steps"]
         self.total_steps = 0
 
-        self.actor = MultiInputActor(config).to(self.device)
+        self.actor = MultiInputActor(config["model"]).to(self.device)
 
         for p in self.actor.parameters():
             p.requires_grad = False

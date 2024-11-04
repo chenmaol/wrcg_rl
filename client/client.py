@@ -11,6 +11,7 @@ class Client:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((ip, port))
 
+        self.wait_time = 60.0
         self.config = self.get_data()
         self.policy = eval(self.config['policy']["name"])(self.config["policy"])
         self.env = eval(self.config["env"]["name"])(self.config["env"])

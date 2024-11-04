@@ -2,6 +2,7 @@
 env:
   name: WRCGContinuousEnv
   with_speed: &with_speed true
+  num_concat_image: 1
   repeat_thres: 10
   reward_max_speed: 30
   reward_coef: 1

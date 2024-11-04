@@ -8,7 +8,6 @@ class ReplayBuffer:
         self.ptr = 0
         self.size = 0
         self.max_size = int(config["buffer_size"])
-        self.norm = {}
         config["state_prime"] = config["state"]
         self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
         self.buffer = self.create_dict_recursively(config)
@@ -23,10 +22,7 @@ class ReplayBuffer:
                 dims += value["dim"] if isinstance(value["dim"], list) else [value["dim"]]
                 dtype = eval(value["type"])
                 new_dict[key] = np.zeros(dims, dtype=dtype)
-                if "norm" in value:
-                    self.norm[key] = value["norm"]
-                else:
-                    self.norm[key] = 1.0
+
             else:
                 new_dict[key] = self.create_dict_recursively(value)
         return new_dict
