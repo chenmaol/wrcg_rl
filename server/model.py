@@ -124,6 +124,7 @@ class MultiInputCritic(nn.Module):
         self.config = config
         input_channel = config["input_channel"]
         action_head = config["action_head"]
+        self.norm = config["norm"]
         self.cnn = nn.Sequential(
             nn.Conv2d(input_channel, 16, kernel_size=4, stride=2),  # [N, 4, 112, 112] -> [N, 16, 55, 55] PF=4
             nn.ReLU(),
