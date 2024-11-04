@@ -1,6 +1,4 @@
 
-&image_size 112
-&action_head 2
 env:
   name: WRCGContinuousEnv
   repeat_thres: 10
@@ -10,6 +8,7 @@ env:
   action_penalty: 0
   fps: 2
   gray_scale: False
+  image_size: &image_size 112
   action_spaces: !!seq
     - 'w'
     - 'a'
@@ -19,7 +18,7 @@ env:
     - *image_size
 policy:
   name: SAC
-  action_head: *action_head
+  action_head: &action_head 2
   wait_time: 60.0
   model:
     action_head: *action_head
