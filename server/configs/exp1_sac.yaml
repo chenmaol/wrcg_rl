@@ -1,7 +1,6 @@
 
 &image_size 112
 &action_head 2
-wait_time: 60.0
 env:
   name: WRCGContinuousEnv
   repeat_thres: 10
@@ -21,6 +20,7 @@ env:
 policy:
   name: SAC
   action_head: *action_head
+  wait_time: 60.0
   model:
     action_head: *action_head
     input_channel: 3

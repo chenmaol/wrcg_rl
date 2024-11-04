@@ -15,7 +15,7 @@ class Client:
         self.policy = eval(self.config['policy']["name"])(self.config["policy"])
         self.env = eval(self.config["env"]["name"])(self.config["env"])
 
-        self.wait_time = self.config["wait_time"]
+        self.wait_time = self.config['policy']["wait_time"]
 
         self.sync_paras()
 

@@ -71,7 +71,7 @@ class Server:
 
     # ================= SOCKET FUNCTION ==================
     def get_data(self, conn):
-        conn.settimeout(self.config["wait_time"])
+        conn.settimeout(self.config["policy"]["wait_time"])
         data_len = struct.unpack('>Q', conn.recv(8))[0]
         data = b''
         while len(data) < data_len:
