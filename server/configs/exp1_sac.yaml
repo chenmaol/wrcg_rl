@@ -1,13 +1,28 @@
 
-image_size: 112
+&image_size 112
+&action_head 2
 wait_time: 60.0
-action_head: 2
-
+env:
+  name: WRCGContinuousEnv
+  repeat_thres: 10
+  reward_max_speed: 30
+  reward_coef: 1
+  stack_penalty: 0
+  action_penalty: 0
+  fps: 2
+  gray_scale: False
+  action_spaces: !!seq
+    - 'w'
+    - 'a'
+    - 'd'
+  resize_size: !!seq
+    - *image_size
+    - *image_size
 policy:
   name: SAC
-  action_head: 2
+  action_head: *action_head
   model:
-    action_head: {{ policy.action_head }}
+    action_head: *action_head
     input_channel: 3
     norm:
       image: 255.
@@ -31,15 +46,15 @@ buffer:
     image:
       dim: !!seq
         - 3 # equal to num_concat_image * (1 if gray_scale else 3)
-        - {{ image_size }}
-        - {{ image_size }}
+        - *image_size
+        - *image_size
       type: np.uint8
     speed:
       dim: !!seq
         - 1
       type: np.uint8
   action:
-    dim: {{ policy.action_head }}
+    dim: *action_head
     type: np.float32
   reward:
     dim: 1
@@ -47,19 +62,4 @@ buffer:
   done:
     dim: 1
     type: np.bool_
-env:
-  name: WRCGContinuousEnv
-  repeat_thres: 10
-  reward_max_speed: 30
-  reward_coef: 5
-  stack_penalty: 20
-  action_penalty: 0.1
-  fps: 2
-  gray_scale: False
-  action_spaces: !!seq
-    - 'w'
-    - 'a'
-    - 'd'
-  resize_size: !!seq
-    - {{image_size}}
-    - {{image_size}}
+
