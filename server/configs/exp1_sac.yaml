@@ -1,6 +1,7 @@
 
 env:
   name: WRCGContinuousEnv
+  with_speed: true
   repeat_thres: 10
   reward_max_speed: 30
   reward_coef: 1
@@ -16,9 +17,32 @@ env:
   resize_size: !!seq
     - *image_size
     - *image_size
+buffer:
+  name: ReplayBuffer
+  buffer_size: !!float 2.0e5
+  state:
+    image:
+      dim: !!seq
+        - 3 # equal to num_concat_image * (1 if gray_scale else 3)
+        - *image_size
+        - *image_size
+      type: np.uint8
+    speed: # if with_speed is true in env
+      dim: !!seq
+        - 1
+      type: np.uint8
+  action:
+    dim: &action_head 2
+    type: np.float32
+  reward:
+    dim: 1
+    type: np.float32
+  done:
+    dim: 1
+    type: np.bool_
 policy:
   name: SAC
-  action_head: &action_head 2
+  action_head: *action_head
   wait_time: 60.0
   model:
     action_head: *action_head
@@ -38,27 +62,5 @@ policy:
     gradient_steps: 50
     reward_deque_length: 1000
     tau: 0.02
-buffer:
-  name: ReplayBuffer
-  buffer_size: !!float 2.0e5
-  state:
-    image:
-      dim: !!seq
-        - 3 # equal to num_concat_image * (1 if gray_scale else 3)
-        - *image_size
-        - *image_size
-      type: np.uint8
-    speed:
-      dim: !!seq
-        - 1
-      type: np.uint8
-  action:
-    dim: *action_head
-    type: np.float32
-  reward:
-    dim: 1
-    type: np.float32
-  done:
-    dim: 1
-    type: np.bool_
+
 
