@@ -21,11 +21,11 @@ class WRCGBaseEnv:
         self.game_window_name = "WRCG"
         self.ratio = 1
         self.repeat_nums = 0
-        self.repeat_thres = 10
-        self.reward_max_speed = 30
-        self.reward_coef = 5
-        self.stack_penalty = 20
-        self.action_penalty = 0.1
+        self.repeat_thres = config["repeat_thres"]
+        self.reward_max_speed = config["reward_max_speed"]
+        self.reward_coef = config["reward_coef"]
+        self.stack_penalty = config["stack_penalty"]
+        self.action_penalty = config["action_penalty"]
         self.gray_scale = config["gray_scale"]
         self.num_concat_image = config["num_concat_image"]
         self.states = {"image": deque(maxlen=self.num_concat_image)}
