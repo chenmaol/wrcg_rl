@@ -44,7 +44,7 @@ class DQN:
 class SAC:
     def __init__(self, config):
         self.device = "cuda"
-        self.warmup_steps = config["client_warmup_steps"]
+        self.warmup_steps = config["training"]["warmup_steps"]
         self.total_steps = 0
 
         self.actor = MultiInputActor(config).to(self.device)
@@ -52,8 +52,7 @@ class SAC:
         for p in self.actor.parameters():
             p.requires_grad = False
 
-        self.action_head = config["action"]["head"]
-        self.state_keys = config["state"].keys()
+        self.action_head = config["action_head"]
 
         self.config = config
 
@@ -69,8 +68,8 @@ class SAC:
 
     def preprocess(self, x):
         output = {}
-        for key in self.state_keys:
-            output[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device) / self.config["state"][key]["norm"]
+        for key, value in x.items():
+            output[key] = torch.from_numpy(value).float().unsqueeze(0).to(self.device)
         return output
 
     def update_weights(self, weights):

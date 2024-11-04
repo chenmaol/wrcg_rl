@@ -31,7 +31,7 @@ class WRCGBaseEnv:
         self.states = {"image": deque(maxlen=self.num_concat_image)}
         self.action_spaces = config["action"]['spaces']
         self.screen_size = (1920, 1080)
-        self.resize_size = config["state"]["image"]["dim"][1:]
+        self.resize_size = config["resize_size"]
         self.fps = config["fps"]
 
         self.with_speed = True if "speed" in config["state"] else False

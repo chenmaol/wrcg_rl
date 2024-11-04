@@ -53,8 +53,9 @@ class MultiInputActor(nn.Module):
     def __init__(self, config):
         super(MultiInputActor, self).__init__()
         self.config = config
-        input_channel = config["state"]["image"]["dim"][0]
-        action_head = config["action"]["head"]
+        input_channel = config["input_channel"]
+        action_head = config["action_head"]
+        self.norm = config["norm"]
         self.cnn = nn.Sequential(
             nn.Conv2d(input_channel, 16, kernel_size=4, stride=2),  # [N, 4, 112, 112] -> [N, 16, 55, 55] PF=4
             nn.ReLU(),
@@ -84,11 +85,11 @@ class MultiInputActor(nn.Module):
         self.epsilon = 1e-6
 
     def forward(self, x, deterministic=False, with_logprob=True):
-        f = self.cnn(x["image"])
+        f = self.cnn(x["image"] / self.norm["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)
         if "speed" in self.config["state"]:
-            f = torch.cat((f, x["speed"]), dim=1)
+            f = torch.cat((f, x["speed"] / self.norm["speed"]), dim=1)
 
         mu = self.mu(f)
         log_std = self.log_std(f)
@@ -121,8 +122,8 @@ class MultiInputCritic(nn.Module):
     def __init__(self, config):
         super(MultiInputCritic, self).__init__()
         self.config = config
-        input_channel = config["state"]["image"]["dim"][0]
-        action_head = config["action"]["head"]
+        input_channel = config["input_channel"]
+        action_head = config["action_head"]
         self.cnn = nn.Sequential(
             nn.Conv2d(input_channel, 16, kernel_size=4, stride=2),  # [N, 4, 112, 112] -> [N, 16, 55, 55] PF=4
             nn.ReLU(),
@@ -157,10 +158,10 @@ class MultiInputCritic(nn.Module):
         )
 
     def forward(self, x, a):
-        f = self.cnn(x["image"])
+        f = self.cnn(x["image"] / self.norm["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)
         if "speed" in self.config["state"]:
-            f = torch.cat((f, x["speed"]), dim=1)
+            f = torch.cat((f, x["speed"] / self.norm["image"]), dim=1)
         f = torch.cat([f, a], dim=1)
         return self.q1(f), self.q2(f)

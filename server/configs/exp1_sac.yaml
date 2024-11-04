@@ -1,50 +1,65 @@
-base:
-  fps: 2
-  gray_scale: False
-  num_concat_image: 1
-  max_episode_length: 1000
-  wait_time: 60.0
-  client_warmup_steps: 5000
-  policy: SAC
-  env: WRCGContinuousEnv
+
+image_size: 112
+wait_time: 60.0
+action_head: 2
+
+policy:
+  name: SAC
+  action_head: 2
+  model:
+    action_head: {{ policy.action_head }}
+    input_channel: 3
+    norm:
+      image: 255.
+      speed: 100.
+  training:
+    name: exp1_sac
+    lr: !!float 7.3e-4
+    batch_size: 256
+    gamma: 0.99
+    warmup_steps: 5000
+    max_episode_length: 1000
+    update_interval: 5
+    save_interval: 100
+    gradient_steps: 50
+    reward_deque_length: 1000
+    tau: 0.02
+buffer:
+  name: ReplayBuffer
+  buffer_size: !!float 2.0e5
   state:
     image:
       dim: !!seq
         - 3 # equal to num_concat_image * (1 if gray_scale else 3)
-        - 112
-        - 112
+        - {{ image_size }}
+        - {{ image_size }}
       type: np.uint8
-      norm: 255.
     speed:
       dim: !!seq
         - 1
       type: np.uint8
-      norm: 100.
   action:
-    dim: 2
-    type: np.int64
-    head: 2
-    spaces: !!seq
-      - 'w'
-      - 'a'
-      - 'd'
+    dim: {{ policy.action_head }}
+    type: np.float32
   reward:
     dim: 1
     type: np.float32
   done:
     dim: 1
     type: np.bool_
-train:
-  name: exp1_sac
-  lr: !!float 7.3e-4
-  batch_size: 256
-  gamma: 0.99
-  warmup_steps: 5000
-  buffer_size: !!float 2.0e5
-  update_interval: 5
-  save_interval: 100
-  gradient_steps: 50
-  reward_deque_length: 1000
-  tau: 0.02
-
-
+env:
+  name: WRCGContinuousEnv
+  repeat_thres: 10
+  reward_max_speed: 30
+  reward_coef: 5
+  stack_penalty: 20
+  action_penalty: 0.1
+  fps: 2
+  gray_scale: False
+  action_spaces: !!seq
+    - 'w'
+    - 'a'
+    - 'd'
+  resize_size: !!seq
+    - {{image_size}}
+    - {{image_size}}

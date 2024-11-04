@@ -3,11 +3,11 @@ import torch
 
 
 class ReplayBuffer:
-    def __init__(self, config, max_size=int(1e5)):
+    def __init__(self, config):
         self.config = config
         self.ptr = 0
         self.size = 0
-        self.max_size = int(max_size)
+        self.max_size = int(config["buffer_size"])
         self.norm = {}
         config["state_prime"] = config["state"]
         self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
@@ -44,7 +44,7 @@ class ReplayBuffer:
             if isinstance(value, dict):
                 output[key] = self.sample_dict_recursively(value, ind)
             else:
-                output[key] = torch.FloatTensor(value[ind] / self.norm[key]).to("cuda")
+                output[key] = torch.FloatTensor(value[ind]).to("cuda")
         return output
 
     def update(self, data):

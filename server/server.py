@@ -20,8 +20,8 @@ class Server:
         sock.bind(("", 9999))
         sock.listen()
 
-        self.policy = eval(self.config["base"]["policy"])(self.config)
-        self.buffer = ReplayBuffer(self.config["base"], self.config["train"]["buffer_size"])
+        self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
+        self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
 
         with tqdm(ncols=100, leave=True) as pbar:
             pbar.set_description("training")
@@ -39,7 +39,7 @@ class Server:
         self.send_data(conn, data)
 
     def init_client(self, conn):
-        self.send_data(conn, self.config["base"])
+        self.send_data(conn, self.config)
 
     def train(self, conn, addr, pbar):
         print(f"connected: {addr}")
@@ -71,7 +71,7 @@ class Server:
 
     # ================= SOCKET FUNCTION ==================
     def get_data(self, conn):
-        conn.settimeout(self.config["base"]["wait_time"])
+        conn.settimeout(self.config["wait_time"])
         data_len = struct.unpack('>Q', conn.recv(8))[0]
         data = b''
         while len(data) < data_len:

@@ -11,11 +11,11 @@ class Client:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((ip, port))
 
-        self.wait_time = 60.0
+        self.config = self.get_data()
+        self.policy = eval(self.config['policy']["name"])(self.config["policy"])
+        self.env = eval(self.config["env"]["name"])(self.config["env"])
 
-        self.base_config = self.get_data()
-        self.policy = eval(self.base_config['policy'])(self.base_config)
-        self.env = eval(self.base_config['env'])(self.base_config)
+        self.wait_time = self.config["wait_time"]
 
         self.sync_paras()
 
@@ -28,7 +28,7 @@ class Client:
         while True:
             # reset car
             s = self.env.reset_car()
-            for i in range(self.base_config["max_episode_length"]):
+            for i in range(self.config["policy"]["training"]["max_episode_length"]):
                 # select action by state
                 a = self.policy.act(s)
                 # get next states, reward, done, by env

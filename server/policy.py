@@ -111,28 +111,27 @@ class SAC:
             self,
             config,
     ):
-        base_config = config["base"]
-        train_config = config["train"]
-        self.base_config = base_config
+        self.config = config
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
         # base config
-        self.actor = MultiInputActor(base_config).to(self.device)
-        self.critic = MultiInputCritic(base_config).to(self.device)
-        self.target_critic = MultiInputCritic(base_config).to(self.device)
+        self.actor = MultiInputActor(config["model"]).to(self.device)
+        self.critic = MultiInputCritic(config["model"]).to(self.device)
+        self.target_critic = MultiInputCritic(config["model"]).to(self.device)
         self.target_critic.load_state_dict(self.critic.state_dict())
         for p in self.target_critic.parameters():
             p.requires_grad = False
 
         self.finetune_ent = True
         if self.finetune_ent:
-            self.target_entropy = float(-np.prod(base_config["action"]["head"]).astype(np.float32))
+            self.target_entropy = float(-np.prod(config["action_head"]).astype(np.float32))
             self.log_ent_coef = torch.log(torch.ones(1, device=self.device) * 1.0).requires_grad_(True)
         else:
             self.log_ent_coef = torch.log(torch.ones(1, device=self.device) * 0.2)
 
         # training config
+        train_config = self.config["training"]
         self.name = train_config["name"]
         self.lr = train_config["lr"]
         self.gamma = train_config["gamma"]
@@ -157,6 +156,7 @@ class SAC:
 
     def learn(self, buffer):
         ent_coef_losses = 0
+        ent_coefs = 0
         actor_losses, critic_losses = 0, 0
         # log_probs = []
         # min_qf_pis = []
@@ -183,7 +183,7 @@ class SAC:
             else:
                 ent_coef = torch.exp(self.log_ent_coef.detach())
 
-            # ent_coefs.append(ent_coef.item())
+            ent_coefs += ent_coef.item()
 
             # critic
             with torch.no_grad():
@@ -229,6 +229,7 @@ class SAC:
         return {"actor_loss": actor_losses / gradient_steps,
                 "critic_loss": critic_losses / gradient_steps,
                 "ent_coef_loss": ent_coef_losses / gradient_steps,
+                "ent_coef": ent_coefs / gradient_steps,
                 }
 
     def update_network(self, buffer):
