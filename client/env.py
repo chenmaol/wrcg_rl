@@ -80,7 +80,8 @@ class WRCGBaseEnv:
         """
         states = {"image": np.concatenate(list(self.states["image"]), axis=0)}
         if self.with_speed:
-            states["speed"] = np.concatenate(list(self.states["speed"]), axis=0)
+            # states["speed"] = np.concatenate(list(self.states["speed"]), axis=0)
+            states["speed"] = np.array(self.states["speed"][-1])
         return states
 
     def init_states(self):

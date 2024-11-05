@@ -145,7 +145,7 @@ class SAC:
 
         self.optimizer_actor = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.optimizer_critic = torch.optim.Adam(self.critic.parameters(), self.lr)
-        self.ent_coef_optimizer = torch.optim.Adam([self.log_ent_coef], self.lr / 2)
+        self.ent_coef_optimizer = torch.optim.Adam([self.log_ent_coef], self.lr)
 
         self.total_steps = 0
         self.total_episodes = 0
