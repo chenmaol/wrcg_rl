@@ -297,7 +297,7 @@ class WRCGContinuousEnv(WRCGBaseEnv):
 
     def step(self, action):
         # take action
-        t1 = (action[0] + 1) / self.fps / 2
+        t1 = max(action[0], 0) / self.fps
         d = 1 if action[1] > 0 else 2
         t2 = abs(action[1]) / self.fps
         self.action.down_key(self.action_spaces[0])
