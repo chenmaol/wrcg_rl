@@ -105,6 +105,9 @@ class DQN:
         # update network
         self.update_network(buffer)
 
+    def load_checkpoint(self, checkpoint):
+        self.network.load_state_dict(torch.load(checkpoint))
+
 
 class SAC:
     def __init__(
@@ -271,3 +274,6 @@ class SAC:
     def soft_update(self):
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * param.data + (1.0 - self.tau) * target_param.data)
+
+    def load_checkpoint(self, checkpoint):
+        self.actor.load_state_dict(torch.load(checkpoint))

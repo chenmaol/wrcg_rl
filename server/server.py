@@ -23,6 +23,10 @@ class Server:
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
         self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
 
+        if run_type == "infer":
+            self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
+            self.config["policy"]["training"]["warmup_steps"] = 0
+
         with tqdm(ncols=100, leave=True) as pbar:
             pbar.set_description("training")
             while True:
@@ -63,6 +67,30 @@ class Server:
                     self.sync_paras(conn)
                     episode_rewards = []
                 pbar.update(1)
+
+        except Exception as err:
+            print(err)
+            print(traceback.print_exc())
+        print(f"disconnected: {addr}")
+
+    def infer(self, conn, addr, pbar):
+        print(f"connected: {addr}")
+        try:
+            # init start flag and weights for client
+            self.init_client(conn)
+            self.sync_paras(conn)
+            episode_rewards = []
+            while conn:
+                # receive data from client
+                data = self.get_data(conn)
+                if len(data) == 0:
+                    break
+                episode_rewards.append(data["reward"])
+
+                if data["done"]:
+                    pbar.update(1)
+                    print(np.mean(episode_rewards))
+                    episode_rewards = []
 
         except Exception as err:
             print(err)

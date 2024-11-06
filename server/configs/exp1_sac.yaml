@@ -64,5 +64,7 @@ policy:
     gradient_steps: 50
     reward_deque_length: 1000
     tau: 0.02
+  inference:
+    checkpoint: xxx.pt
 
 
