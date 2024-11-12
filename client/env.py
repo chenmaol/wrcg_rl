@@ -293,7 +293,11 @@ class WRCGContinuousEnv(WRCGBaseEnv):
         :param speed: speed of current state
         :return: reward of current state
         """
-        return min(speed / self.reward_max_speed, 1.0) * self.reward_coef - self.action_penalty
+        if speed > self.reward_max_speed:
+            r = (self.reward_max_speed - speed) / self.reward_max_speed
+        else:
+            r = speed / self.reward_max_speed
+        return r * self.reward_coef - self.action_penalty
 
     def step(self, action):
         # take action
