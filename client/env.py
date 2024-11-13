@@ -116,11 +116,11 @@ class WRCGBaseEnv:
         """
         self.reset_key()
 
-        if np.random.rand() > 0.7:
+        if np.random.rand() > 0.5:
             self.action.press_key('r', 2)
         else:
-            self.action.press_key('s', 1)
-            time.sleep(1)
+            self.action.press_key('s', 0.5)
+            time.sleep(3)
         time.sleep(0.1)
 
         self.init_states()
