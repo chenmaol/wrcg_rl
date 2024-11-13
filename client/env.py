@@ -38,9 +38,6 @@ class WRCGBaseEnv:
         if self.with_speed:
             self.states["speed"] = deque(maxlen=self.num_concat_image)
 
-        # extra feature: limited chance to go backward when stacking
-        self.backward_num = config["backward_num"]
-
         # button loc
         self.highlight_loc = [0, 0.4417, 0.0336, 0.5]
         self.highlight_ctr = [self.highlight_loc[0] * 0.5 + self.highlight_loc[2] * 0.5,
