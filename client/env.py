@@ -38,6 +38,9 @@ class WRCGBaseEnv:
         if self.with_speed:
             self.states["speed"] = deque(maxlen=self.num_concat_image)
 
+        # extra feature: limited chance to go backward when stacking
+        self.backward_num = config["backward_num"]
+
         # button loc
         self.highlight_loc = [0, 0.4417, 0.0336, 0.5]
         self.highlight_ctr = [self.highlight_loc[0] * 0.5 + self.highlight_loc[2] * 0.5,
@@ -116,7 +119,11 @@ class WRCGBaseEnv:
         """
         self.reset_key()
 
-        self.action.press_key('r', 2)
+        if np.random.rand() > 0.7:
+            self.action.press_key('r', 2)
+        else:
+            self.action.press_key('s', 1)
+            time.sleep(1)
         time.sleep(0.1)
 
         self.init_states()
@@ -344,6 +351,7 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             self.repeat_nums += 1
         else:
             self.repeat_nums = 0
+
         done = True if self.repeat_nums >= self.repeat_thres else False
         if done:
             reward = -self.stack_penalty
