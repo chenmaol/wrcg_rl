@@ -119,8 +119,8 @@ class WRCGBaseEnv:
         if np.random.rand() > 0.5:
             self.action.press_key('r', 2)
         else:
-            self.action.press_key('s', 0.5)
-            self.action.press_key('w', 0.2)
+            self.action.press_key('s', 1)
+            self.action.press_key('w', 0.4)
             time.sleep(1)
         time.sleep(0.1)
 
