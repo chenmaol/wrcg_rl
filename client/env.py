@@ -120,7 +120,8 @@ class WRCGBaseEnv:
             self.action.press_key('r', 2)
         else:
             self.action.press_key('s', 0.5)
-            time.sleep(3)
+            self.action.press_key('w', 0.2)
+            time.sleep(1)
         time.sleep(0.1)
 
         self.init_states()
