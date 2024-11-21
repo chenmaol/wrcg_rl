@@ -69,7 +69,7 @@ class MultiInputActor(nn.Module):
             nn.ReLU(),
         )
 
-        self.in_features = 256 * 4 * 4
+        self.in_features = 256 * 5 * 5
         self.hid_channel = 64
         self.linear = nn.Sequential(
             nn.Linear(self.in_features, self.hid_channel),
@@ -138,7 +138,7 @@ class MultiInputCritic(nn.Module):
             nn.ReLU(),
         )
 
-        self.in_features = 256 * 4 * 4
+        self.in_features = 256 * 5 * 5
         self.hid_channel = 64
         self.linear = nn.Sequential(
             nn.Linear(self.in_features, self.hid_channel),
