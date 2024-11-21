@@ -21,6 +21,7 @@ env:
     - *image_size
 buffer:
   name: ReplayBuffer
+  exp_name: *exp_name
   buffer_size: !!float 1.0e5
   state:
     image:
@@ -44,7 +45,6 @@ buffer:
     type: np.bool_
 policy:
   name: SAC
-  exp_name: *exp_name
   action_head: *action_head
   wait_time: 60.0
   model:
