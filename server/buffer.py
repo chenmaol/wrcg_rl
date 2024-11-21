@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import torch
 
@@ -11,6 +13,11 @@ class ReplayBuffer:
         config["state_prime"] = config["state"]
         self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
         self.buffer = self.create_dict_recursively(config)
+
+        self.name = config["policy"]["name"]
+        self.buffer_idx = 0
+        if not os.path.exists("buffer"):
+            os.mkdir("buffer")
 
     def create_dict_recursively(self, d):
         new_dict = {}
@@ -49,7 +56,14 @@ class ReplayBuffer:
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
+        if self.ptr == 0:
+            self.save_buffer()
+
     def sample(self, batch_size):
         ind = np.random.randint(0, self.size, batch_size)
         output = self.sample_dict_recursively(self.buffer, ind)
         return output
+
+    def save_buffer(self):
+        np.save(f"buffer/{self.name}_{self.buffer_idx}.npy", self.buffer)
+        self.buffer_idx += 1
