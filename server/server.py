@@ -122,4 +122,4 @@ class Server:
 
 
 if __name__ == '__main__':
-    server = Server("configs/exp1_sac.yaml")
+    server = Server("configs/exp1_sac_wales.yaml")

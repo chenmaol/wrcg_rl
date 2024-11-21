@@ -14,7 +14,7 @@ class ReplayBuffer:
         self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
         self.buffer = self.create_dict_recursively(config)
 
-        self.name = config["policy"]["name"]
+        self.exp_name = config["exp_name"]
         self.buffer_idx = 0
         if not os.path.exists("buffer"):
             os.mkdir("buffer")
@@ -65,5 +65,5 @@ class ReplayBuffer:
         return output
 
     def save_buffer(self):
-        np.save(f"buffer/{self.name}_{self.buffer_idx}.npy", self.buffer)
+        np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
         self.buffer_idx += 1
