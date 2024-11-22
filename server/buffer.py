@@ -11,6 +11,7 @@ class ReplayBuffer:
         self.size = 0
         self.max_size = int(config["buffer_size"])
         config["state_prime"] = config["state"]
+
         self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
         self.buffer = self.create_dict_recursively(config)
 
@@ -34,12 +35,13 @@ class ReplayBuffer:
                 new_dict[key] = self.create_dict_recursively(value)
         return new_dict
 
-    def update_dict_recursively(self, data, buffer):
-        for key, value in data.items():
+    def update_dict_recursively(self, data_seq, buffer):
+        for key, value in data_seq.items():
             if isinstance(value, dict):
                 self.update_dict_recursively(value, buffer[key])
             else:
-                buffer[key][self.ptr] = value
+                update_len = min(self.max_size - self.ptr, len(value))
+                buffer[key][self.ptr:self.ptr + update_len] = value[:update_len]
 
     def sample_dict_recursively(self, buffer, ind):
         output = {}
@@ -50,13 +52,15 @@ class ReplayBuffer:
                 output[key] = torch.FloatTensor(value[ind]).to("cuda")
         return output
 
-    def update(self, data):
-        self.update_dict_recursively(data, self.buffer)
+    def update(self, data_seq):
+        self.update_dict_recursively(data_seq, self.buffer)
 
-        self.ptr = (self.ptr + 1) % self.max_size
-        self.size = min(self.size + 1, self.max_size)
+        previous_ptr = self.ptr
+        update_len = min(self.max_size - self.ptr, len(data_seq["reward"]))
+        self.ptr = (self.ptr + update_len) % self.max_size
+        self.size = min(self.size + update_len, self.max_size)
 
-        if self.ptr == 0:
+        if self.ptr < previous_ptr:
             self.save_buffer()
 
     def sample(self, batch_size):

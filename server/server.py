@@ -51,22 +51,20 @@ class Server:
             # init start flag and weights for client
             self.init_client(conn)
             self.sync_paras(conn)
-            episode_rewards = []
             while conn:
                 # receive data from client
-                data = self.get_data(conn)
-                if len(data) == 0:
+                data_seq = self.get_data(conn)
+                if len(data_seq) == 0:
                     break
                 # put data into buffer
-                self.buffer.update(data)
-                episode_rewards.append(data["reward"])
+                self.buffer.update(data_seq)
 
-                if data["done"]:
-                    self.policy.update(self.buffer, episode_rewards)
-                    # send back start flag and weights
-                    self.sync_paras(conn)
-                    episode_rewards = []
-                pbar.update(1)
+                r_seq = data_seq["reward"]
+                self.policy.update(self.buffer, r_seq)
+                # send back start flag and weights
+                self.sync_paras(conn)
+
+                pbar.update(len(r_seq))
 
         except Exception as err:
             print(err)

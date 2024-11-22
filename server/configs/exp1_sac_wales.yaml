@@ -46,7 +46,7 @@ buffer:
 policy:
   name: SAC
   action_head: *action_head
-  wait_time: 60.0
+  wait_time: 600.0
   model:
     action_head: *action_head
     with_speed: *with_speed

@@ -20,6 +20,40 @@ class Client:
 
         self.sync_paras()
 
+        self.buffer = self.init_data_buffer(self.config["buffer"])
+
+    def init_data_buffer(self, buffer_config):
+        buffer = {}
+        for key, value in buffer_config.items():
+            if key not in ["state", "action", "reward", "done"]:
+                continue
+            if key != "state":
+                buffer[key] = []
+            else:
+                buffer[key] = {}
+                for sub_key, sub_value in value.items():
+                    buffer[key][sub_key] = []
+        buffer["state_prime"] = buffer["state"]
+        return buffer
+
+    def update_data_buffer(self, data):
+        for key, value in data.items():
+            if key in self.buffer and isinstance(self.buffer[key], list):
+                self.buffer[key].append(value)
+            elif key in self.buffer and isinstance(self.buffer[key], dict):
+                for sub_key, sub_value in value.items():
+                    if sub_key in self.buffer[key] and isinstance(self.buffer[key][sub_key], list):
+                        self.buffer[key][sub_key].append(sub_value)
+
+    def clear_data_buffer(self):
+        for key, value in self.buffer.items():
+            if key in self.buffer and isinstance(self.buffer[key], list):
+                self.buffer[key].clear()
+            elif key in self.buffer and isinstance(self.buffer[key], dict):
+                for sub_key, sub_value in value.items():
+                    if sub_key in self.buffer[key] and isinstance(self.buffer[key][sub_key], list):
+                        self.buffer[key][sub_key].clear()
+
     def sync_paras(self):
         received_data = self.get_data()
         self.policy.update_weights(received_data["checkpoint"])
@@ -35,12 +69,14 @@ class Client:
                 # get next states, reward, done, by env
                 data = self.env.step(a)
                 data["state"] = s
-                data["action"] = a
-                # send data to server
-                self.send_data(data)
+
                 # update each step
                 s = data["state_prime"]
+
+                # save data to local buffer
+                self.update_data_buffer(data)
                 if data["done"]:
+                    self.send_data()
                     self.sync_paras()
                     break
 
@@ -63,12 +99,14 @@ class Client:
         else:
             raise Exception('数据接收不完整')
 
-    def send_data(self, data):
-        data = pickle.dumps(data)
+    def send_data(self):
+        data = pickle.dumps(self.buffer)
         data_len = len(data)
 
         self.sock.sendall(struct.pack('>Q', data_len))
         self.sock.sendall(data)
+
+        self.clear_data_buffer()
 
 
 if __name__ == '__main__':

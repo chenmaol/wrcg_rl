@@ -359,6 +359,7 @@ class WRCGContinuousEnv(WRCGBaseEnv):
 
         return {
             "state_prime": self.get_states(),
+            "action": action,
             "reward": reward,
             "done": done or end
             }
