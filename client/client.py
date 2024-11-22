@@ -1,7 +1,7 @@
 import socket
 import struct
 import pickle
-
+import copy
 from policy import DQN, SAC
 from env import WRCGDiscreteEnv, WRCGContinuousEnv
 
@@ -33,7 +33,7 @@ class Client:
                 buffer[key] = {}
                 for sub_key, sub_value in value.items():
                     buffer[key][sub_key] = []
-        buffer["state_prime"] = buffer["state"]
+        buffer["state_prime"] = copy.deepcopy(buffer["state"])
         return buffer
 
     def update_data_buffer(self, data):
@@ -68,7 +68,7 @@ class Client:
                 a = self.policy.act(s)
                 # get next states, reward, done, by env
                 data = self.env.step(a)
-                data["state"] = s
+                data["state"] = s.copy()
 
                 # update each step
                 s = data["state_prime"]

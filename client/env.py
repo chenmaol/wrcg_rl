@@ -360,6 +360,6 @@ class WRCGContinuousEnv(WRCGBaseEnv):
         return {
             "state_prime": self.get_states(),
             "action": action,
-            "reward": reward,
-            "done": done or end
+            "reward": np.array(reward).reshape(1),
+            "done": np.array(done or end).reshape(1)
             }
