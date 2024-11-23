@@ -33,7 +33,7 @@ class Server:
             self.config["policy"]["training"]["warmup_steps"] = 0
 
         with tqdm(ncols=100, leave=True) as pbar:
-            pbar.set_description("training")
+            pbar.set_description(f"training. remained learn times: {self.policy.count}")
             while True:
                 conn, addr = sock.accept()
 
