@@ -80,7 +80,6 @@ class Client:
                 # save data to local buffer
                 self.update_data_buffer(data)
                 if data["done"]:
-
                     self.send_data()
                     logging.info(f"sent data")
                     self.sync_paras()

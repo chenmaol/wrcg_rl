@@ -24,8 +24,10 @@ class Server:
         sock.listen()
 
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
-        self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
 
+        if run_type == "train":
+            self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
+            self.policy.buffer = self.buffer
         if run_type == "infer":
             self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
             self.config["policy"]["training"]["warmup_steps"] = 0

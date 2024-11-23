@@ -5,6 +5,8 @@ import torch
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
+import threading
+
 
 class DQN:
     def __init__(
@@ -154,9 +156,17 @@ class SAC:
         self.writer = SummaryWriter(log_dir='./logs/' + self.name)
         self.episode_reward = deque(maxlen=self.reward_deque_length)
         self.episode_len = deque(maxlen=self.reward_deque_length)
-        self.update_flag = False
 
-    def learn(self, buffer):
+        self.learn_thread = threading.Thread(target=self.learn_thread)
+        self.learn_thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
+        self.learn_thread.start()
+
+        self.count = 0
+        self.learn_condition = threading.Condition()
+
+        self.buffer = None
+
+    def learn(self):
         ent_coef_losses = 0
         ent_coefs = 0
         actor_losses, critic_losses = 0, 0
@@ -166,7 +176,7 @@ class SAC:
         # logprob_losses = []
         gradient_steps = self.gradient_steps
         for i in range(gradient_steps):
-            sample_data = buffer.sample(self.batch_size)
+            sample_data = self.buffer.sample(self.batch_size)
 
             actions_pi, log_prob = self.actor(sample_data["state"])
             log_prob = log_prob.reshape(-1, 1)
@@ -234,7 +244,7 @@ class SAC:
                 "ent_coef": ent_coefs / gradient_steps,
                 }
 
-    def update_network(self, buffer):
+    def update_network(self):
         total_steps = self.total_steps
         total_episodes = self.total_episodes
 
@@ -242,16 +252,22 @@ class SAC:
             return
 
         if total_episodes % self.update_interval == 0:
-            while self.update_flag:
-                time.sleep(0.1)
-            self.update_flag = True
-            loss = self.learn(buffer)
-            self.update_flag = False
-            for key, value in loss.items():
-                self.writer.add_scalar(key, value, total_steps)
+            with self.learn_condition:
+                self.count += 1
 
         if total_episodes % self.save_interval == 0:
             torch.save(self.actor.state_dict(), 'checkpoints/sac_actor_{}.pt'.format(total_episodes))
+
+    def learn_thread(self):
+        while True:
+            with self.learn_condition:
+                while self.count == 0:
+                    self.learn_condition.wait()  # 等待count大于0
+                if self.count > 0:
+                    loss = self.learn()
+                    for key, value in loss.items():
+                        self.writer.add_scalar(key, value, self.total_steps)
+                    self.count -= 1
 
     def update_plot(self, r_seq):
         # update steps
