@@ -5,6 +5,10 @@ import copy
 from policy import DQN, SAC
 from env import WRCGDiscreteEnv, WRCGContinuousEnv
 
+import logging
+
+logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 class Client:
     def __init__(self, ip, port):
@@ -76,8 +80,11 @@ class Client:
                 # save data to local buffer
                 self.update_data_buffer(data)
                 if data["done"]:
+
                     self.send_data()
+                    logging.info(f"sent data")
                     self.sync_paras()
+                    logging.info(f"got data")
                     break
 
     def eval(self, checkpoint_path):
