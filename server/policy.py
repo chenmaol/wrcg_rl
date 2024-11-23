@@ -6,7 +6,9 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 import threading
+import logging
 
+logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class DQN:
     def __init__(
@@ -157,14 +159,13 @@ class SAC:
         self.episode_reward = deque(maxlen=self.reward_deque_length)
         self.episode_len = deque(maxlen=self.reward_deque_length)
 
+        self.count = 0
+
+        self.buffer = None
+
         self.learn_thread = threading.Thread(target=self.learn_thread)
         self.learn_thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
         self.learn_thread.start()
-
-        self.count = 0
-        self.learn_condition = threading.Condition()
-
-        self.buffer = None
 
     def learn(self):
         ent_coef_losses = 0
@@ -244,30 +245,29 @@ class SAC:
                 "ent_coef": ent_coefs / gradient_steps,
                 }
 
-    def update_network(self):
+    def update_network(self, seq_len):
         total_steps = self.total_steps
         total_episodes = self.total_episodes
 
         if total_steps < self.warmup_steps:
             return
 
-        if total_episodes % self.update_interval == 0:
-            with self.learn_condition:
-                self.count += 1
+        self.count += seq_len / self.update_interval
 
         if total_episodes % self.save_interval == 0:
             torch.save(self.actor.state_dict(), 'checkpoints/sac_actor_{}.pt'.format(total_episodes))
 
     def learn_thread(self):
         while True:
-            with self.learn_condition:
-                while self.count == 0:
-                    self.learn_condition.wait()  # 等待count大于0
-                if self.count > 0:
-                    loss = self.learn()
-                    for key, value in loss.items():
-                        self.writer.add_scalar(key, value, self.total_steps)
-                    self.count -= 1
+            while self.count < 1:
+                time.sleep(1)
+            if self.count > 0:
+                self.count -= 1
+                logging.info(f"start learning, remained learn times:{self.count}, buffer ptr:{self.buffer.ptr}")
+                loss = self.learn()
+                logging.info(f"end learning, remained learn times:{self.count}, buffer ptr:{self.buffer.ptr}")
+                for key, value in loss.items():
+                    self.writer.add_scalar(key, value, self.total_steps)
 
     def update_plot(self, r_seq):
         # update steps
@@ -280,11 +280,11 @@ class SAC:
         self.writer.add_scalar("rollout/ep_rew_mean", np.mean(list(self.episode_reward)), self.total_steps)
         self.writer.add_scalar("rollout/ep_len_mean", np.mean(list(self.episode_len)), self.total_steps)
 
-    def update(self, buffer, r_seq):
+    def update(self, r_seq):
         # update performance for plotting
         self.update_plot(r_seq)
         # update network
-        self.update_network(buffer)
+        self.update_network(len(r_seq))
 
     def soft_update(self):
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):

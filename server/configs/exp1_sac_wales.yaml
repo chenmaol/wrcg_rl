@@ -61,7 +61,7 @@ policy:
     gamma: 0.99
     warmup_steps: 5000
     max_episode_length: 1000
-    update_interval: 5
+    update_interval: 100
     save_interval: 100
     gradient_steps: 50
     reward_deque_length: 1000
