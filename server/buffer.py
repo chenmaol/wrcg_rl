@@ -2,7 +2,7 @@ import os.path
 
 import numpy as np
 import torch
-
+import pickle
 
 class ReplayBuffer:
     def __init__(self, config):
@@ -69,5 +69,7 @@ class ReplayBuffer:
         return output
 
     def save_buffer(self):
-        np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
+        # np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
+        with open(f"buffer/{self.exp_name}_{self.buffer_idx}.pkl", 'wb') as f:
+            pickle.dump(self.buffer, f, protocol=pickle.HIGHEST_PROTOCOL)
         self.buffer_idx += 1

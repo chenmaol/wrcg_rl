@@ -6,7 +6,6 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from collections import deque
 
-
 class DQN:
     def __init__(
             self,

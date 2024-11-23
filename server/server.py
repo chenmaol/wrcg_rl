@@ -7,6 +7,9 @@ import numpy as np
 import pickle
 import yaml
 import struct
+import logging
+
+logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from policy import DQN, SAC
 from buffer import ReplayBuffer
@@ -57,10 +60,12 @@ class Server:
                 if len(data_seq) == 0:
                     break
                 # put data into buffer
+                logging.info(f"{addr} get data")
                 self.buffer.update(data_seq)
-
+                logging.info(f"{addr} update buffer")
                 r_seq = data_seq["reward"]
                 self.policy.update(self.buffer, r_seq)
+                logging.info(f"{addr} updated policy")
                 # send back start flag and weights
                 self.sync_paras(conn)
 
