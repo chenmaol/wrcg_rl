@@ -94,6 +94,10 @@ class ReplayBuffer:
             for key, value in data.items():
                 new_data[key] = extract_first_n_elements(value, idx, {})
         else:
-            new_data = data[idx * self.save_interval:(idx + 1) * self.save_interval]
+            start_idx = (idx * self.save_interval) % self.max_size
+            end_idx = ((idx + 1) * self.save_interval) % self.max_size
+            if end_idx == 0:
+                end_idx = self.max_size
+            new_data = data[start_idx:end_idx]
 
         return new_data
