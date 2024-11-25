@@ -302,6 +302,13 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             r = (self.reward_max_speed - speed) / self.reward_max_speed
         else:
             r = speed / self.reward_max_speed
+
+        # sudden change speed penalty
+        if len(self.states["speed"]) > 0:
+            last_speed = self.states["speed"][-1]
+            if abs(speed - last_speed) > 20:
+                r -= self.stack_penalty
+
         return r * self.reward_coef - self.action_penalty
 
     def step(self, action):

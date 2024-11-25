@@ -10,13 +10,18 @@ class ReplayBuffer:
         self.ptr = 0
         self.size = 0
         self.max_size = int(config["buffer_size"])
+
+        self.save_interval = self.max_size // 100
+        self.data_num = 0
+        self.save_ptr = 0
+
         config["state_prime"] = config["state"]
 
         self.key_words = ["state", "image", "speed", "reward", "done", "action", "state_prime"]
         self.buffer = self.create_dict_recursively(config)
 
         self.exp_name = config["exp_name"]
-        self.buffer_idx = 0
+        # self.buffer_idx = 0
         if not os.path.exists("buffer"):
             os.mkdir("buffer")
 
@@ -55,12 +60,12 @@ class ReplayBuffer:
     def update(self, data_seq):
         self.update_dict_recursively(data_seq, self.buffer)
 
-        previous_ptr = self.ptr
         update_len = min(self.max_size - self.ptr, len(data_seq["reward"]))
         self.ptr = (self.ptr + update_len) % self.max_size
         self.size = min(self.size + update_len, self.max_size)
+        self.data_num += update_len
 
-        if self.ptr < previous_ptr:
+        while self.data_num >= (self.save_ptr + 1) * self.save_interval:
             self.save_buffer()
 
     def sample(self, batch_size):
@@ -70,6 +75,25 @@ class ReplayBuffer:
 
     def save_buffer(self):
         # np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
-        with open(f"buffer/{self.exp_name}_{self.buffer_idx}.pkl", 'wb') as f:
-            pickle.dump(self.buffer, f, protocol=pickle.HIGHEST_PROTOCOL)
-        self.buffer_idx += 1
+        threading.Thread(target=self._save_buffer).start()
+
+    def _save_buffer(self):
+        # np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
+        buffer_idx = self.save_ptr
+        self.save_ptr += 1
+
+        sub_buffer = self.extract_first_n_elements(self.buffer, buffer_idx)
+        with open(f"buffer/{self.exp_name}_{buffer_idx}.pkl", 'wb') as f:
+            pickle.dump(sub_buffer, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def extract_first_n_elements(self, data, idx, new_data=None):
+        if new_data is None:
+            new_data = {}
+
+        if isinstance(data, dict):
+            for key, value in data.items():
+                new_data[key] = extract_first_n_elements(value, idx, {})
+        else:
+            new_data = data[idx * self.save_interval:(idx + 1) * self.save_interval]
+
+        return new_data
