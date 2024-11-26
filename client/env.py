@@ -38,6 +38,8 @@ class WRCGBaseEnv:
         if self.with_speed:
             self.states["speed"] = deque(maxlen=self.num_concat_image)
 
+        self.run_type = None
+
         # button loc
         self.highlight_loc = [0, 0.4417, 0.0336, 0.5]
         self.highlight_ctr = [self.highlight_loc[0] * 0.5 + self.highlight_loc[2] * 0.5,
@@ -116,7 +118,7 @@ class WRCGBaseEnv:
         """
         self.reset_key()
 
-        if np.random.rand() > 0.5:
+        if np.random.rand() > 0.5 and self.run_type == "train":
             self.action.press_key('r', 2)
         else:
             self.action.press_key('s', 1)

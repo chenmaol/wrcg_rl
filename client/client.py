@@ -19,6 +19,10 @@ class Client:
         self.config = self.get_data()
         self.policy = eval(self.config['policy']["name"])(self.config["policy"])
         self.env = eval(self.config["env"]["name"])(self.config["env"])
+        # run type
+        self.env.run_type = self.config["run_type"]
+        if self.config["run_type"] == "infer":
+            self.env.repeat_thres = self.config['policy']['inference']["repeat_thres"]
 
         self.wait_time = self.config['policy']["wait_time"]
 

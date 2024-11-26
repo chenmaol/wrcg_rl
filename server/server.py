@@ -17,6 +17,7 @@ class Server:
     def __init__(self, config_file, run_type="train"):
         with open(config_file, 'r') as f:
             self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
+            self.config["run_type"] = run_type
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(("", 9999))
         sock.listen()
