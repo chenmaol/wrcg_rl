@@ -3,6 +3,8 @@ import os.path
 import numpy as np
 import torch
 import pickle
+import threading
+
 
 class ReplayBuffer:
     def __init__(self, config):
@@ -92,7 +94,7 @@ class ReplayBuffer:
 
         if isinstance(data, dict):
             for key, value in data.items():
-                new_data[key] = extract_first_n_elements(value, idx, {})
+                new_data[key] = self.extract_first_n_elements(value, idx, {})
         else:
             start_idx = (idx * self.save_interval) % self.max_size
             end_idx = ((idx + 1) * self.save_interval) % self.max_size
