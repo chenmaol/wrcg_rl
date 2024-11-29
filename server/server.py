@@ -26,6 +26,7 @@ class Server:
         # init policy, buffer
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
         self.buffer = {}
+        self.policy.buffer = self.buffer
 
         # if run_type == "train":
             # self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
