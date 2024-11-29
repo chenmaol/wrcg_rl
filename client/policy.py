@@ -73,8 +73,9 @@ class SAC:
             output[key] = torch.from_numpy(value).float().unsqueeze(0).to(self.device)
         return output
 
-    def update_weights(self, weights):
+    def update_weights(self, checkpoint):
         model_dict = self.actor.state_dict()
+        weights = torch.load(checkpoint)
         for (k, v), new_v in zip(model_dict.items(), weights.values()):
             model_dict[k] = torch.Tensor(new_v)
         self.actor.load_state_dict(model_dict)

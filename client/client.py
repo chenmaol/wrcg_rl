@@ -13,7 +13,7 @@ from env import WRCGDiscreteEnv, WRCGContinuousEnv
 
 # ################### SSH Function ######################
 def get_local_ip(target_ip, target_port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((target_ip, target_port))
     IP = s.getsockname()[0]
     return IP
@@ -68,13 +68,19 @@ class Client:
 
     # ################### Client upload / download func ######################
     def download_config(self):
-        download_files(ssh, "config.yaml", os.path.join(self.root, "config.yaml"))
+        local = "config.yaml"
+        remote = os.path.join(self.root, "config.yaml").replace(os.sep, '/')
+        download_files(ssh, local, remote)
 
     def download_weights(self):
-        download_files(ssh, "actor.pt", os.path.join(self.root, "actor.pt"))
+        local = "actor.pt"
+        remote = os.path.join(self.root, "actor.pt").replace(os.sep, '/')
+        download_files(ssh, local, remote)
 
     def upload_data(self):
-        upload_files(ssh, "buffer.pkl", os.path.join(self.root, "data_pool", self.ip, f"buffer_{self.buffer_idx}.pkl"))
+        local = "buffer.pkl"
+        remote = os.path.join(self.root, "data_pool", self.ip, f"buffer_{self.buffer_idx}.pkl").replace(os.sep, '/')
+        upload_files(ssh, local, remote)
 
     def sync_weights(self):
         self.download_weights()
@@ -85,6 +91,7 @@ class Client:
             pickle.dump(self.buffer, f)
         self.clear_data_buffer()
         self.upload_data()
+        self.buffer_idx += 1
 
     # ################### buffer func ######################
     def init_data_buffer(self):

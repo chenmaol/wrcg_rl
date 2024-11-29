@@ -63,11 +63,12 @@ class Server:
             os.mkdir(os.path.join("data_pool", client_ip))
 
         # record connection
-        self.conn[client_ip] = len(os.listdir(os.path.join("data_pool", client_ip)))
-        # create new buffer
-        self.buffer[client_ip] = eval(self.config["buffer"]["name"])(self.config["buffer"])
-        # create new pbar
-        self.pbar[client_ip] = tqdm(total=int(self.config["buffer"]["buffer_size"]), desc=client_ip)
+        if client_ip not in self.conn:
+            self.conn[client_ip] = len(os.listdir(os.path.join("data_pool", client_ip)))
+            # create new buffer
+            self.buffer[client_ip] = eval(self.config["buffer"]["name"])(self.config["buffer"])
+            # create new pbar
+            self.pbar[client_ip] = tqdm(total=int(self.config["buffer"]["buffer_size"]), desc=client_ip)
 
     def train(self):
         while True:
@@ -76,18 +77,21 @@ class Server:
             # traverse conn folder, detect new data
             for client_ip, buffer_idx in self.conn.items():
                 # put data into buffer
-                buffer_num = len(os.listdir(os.path.join("data_pool", client_ip)))
+                buffer_num = len(os.listdir(os.path.join("data_pool", client_ip))) - 1
+                # print(buffer_num, buffer_idx)
                 if buffer_num > buffer_idx:
-                    for idx in range(buffer_idx, buffer_num):
-                        with open(os.path.join("data_pool", client_ip, f"buffer_{idx}.pkl"), 'rb') as f:
-                            data_seq = pickle.load(f)
-                            self.buffer[client_ip].update(data_seq)
-                            self.policy.update(data_seq["reward"])
-                            self.pbar[client_ip].update(len(data_seq["reward"]))
-                            self.pbar[client_ip].set_description(f"client_ip: {self.policy.count:.2f}")
-            # pbar.update(len(r_seq))
-            # pbar.set_description(f"Current Value: {self.policy.count:.2f}")
+                    with open(os.path.join("data_pool", client_ip, f"buffer_{buffer_idx}.pkl"), 'rb') as f:
+                        data_seq = pickle.load(f)
+                        self.buffer[client_ip].update(data_seq)
+                        self.policy.update(data_seq["reward"])
+                        self.pbar[client_ip].update(len(data_seq["reward"]))
 
+                        if self.pbar[client_ip].n >= self.pbar[client_ip].total:
+                            self.pbar[client_ip].n = self.pbar[client_ip].n % self.pbar[client_ip].total
+                            self.pbar[client_ip].refresh()
+
+                        self.pbar[client_ip].set_description(f"{client_ip}: {self.buffer[client_ip].data_num}")
+                    self.conn[client_ip] = buffer_idx + 1
 
 
 if __name__ == '__main__':
