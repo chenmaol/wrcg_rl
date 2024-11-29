@@ -1,38 +1,95 @@
-import socket
 import struct
 import pickle
 import copy
+import os
+import yaml
+import socket
+from scp import SCPClient
+import paramiko
+
 from policy import DQN, SAC
 from env import WRCGDiscreteEnv, WRCGContinuousEnv
 
-import logging
 
-logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+# ################### SSH Function ######################
+def get_local_ip(target_ip, target_port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect((target_ip, target_port))
+    IP = s.getsockname()[0]
+    return IP
 
 
+def create_ssh_client(server_ip, username, password):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(server_ip, username=username, password=password)
+    return ssh
+
+
+def download_files(ssh, local_download_path, remote_download_path):
+    with SCPClient(ssh.get_transport()) as scp:
+        # Download a file
+        scp.get(remote_download_path, local_download_path)
+        print(f"Downloaded {remote_download_path} to {local_download_path}")
+
+
+def upload_files(ssh, local_upload_path, remote_upload_path):
+    with SCPClient(ssh.get_transport()) as scp:
+        # Upload a file
+        scp.put(local_upload_path, remote_upload_path)
+        print(f"Uploaded {local_upload_path} to {remote_upload_path}")
+
+
+# ################### Client ######################
 class Client:
-    def __init__(self, ip, port):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((ip, port))
+    def __init__(self):
+        self.root = root
+        self.ip = get_local_ip(ip, port)
+        print(self.ip)
+        self.buffer_idx = 0
 
-        self.wait_time = 60.0
-        self.config = self.get_data()
+        # download config.yaml from server -> load config file
+        self.download_config(ssh)
+        with open("config.yaml", 'r') as f:
+            self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
+
+        # init policy, env, buffer
         self.policy = eval(self.config['policy']["name"])(self.config["policy"])
         self.env = eval(self.config["env"]["name"])(self.config["env"])
+        self.buffer = self.init_data_buffer()
+
         # run type
         self.env.run_type = self.config["run_type"]
         if self.config["run_type"] == "infer":
             self.env.repeat_thres = self.config['policy']['inference']["repeat_thres"]
 
-        self.wait_time = self.config['policy']["wait_time"]
+        # sync weights
+        self.sync_weights()
 
-        self.sync_paras()
+    # ################### Client upload / download func ######################
+    def download_config(self):
+        download_files(ssh, "config.yaml", os.path.join(self.root, "config.yaml"))
 
-        self.buffer = self.init_data_buffer(self.config["buffer"])
+    def download_weights(self):
+        download_files(ssh, "actor.pt", os.path.join(self.root, "actor.pt"))
 
-    def init_data_buffer(self, buffer_config):
+    def upload_data(self):
+        upload_files(ssh, "buffer.pkl", os.path.join(self.root, "data_pool", self.ip, f"buffer_{self.buffer_idx}.pkl"))
+
+    def sync_weights(self):
+        self.download_weights()
+        self.policy.update_weights("actor.pt")
+
+    def save_buffer(self):
+        with open("buffer.pkl", 'wb') as f:
+            pickle.dump(self.buffer, f)
+        self.clear_data_buffer()
+        self.upload_data()
+
+    # ################### buffer func ######################
+    def init_data_buffer(self):
         buffer = {}
-        for key, value in buffer_config.items():
+        for key, value in self.config["buffer"].items():
             if key not in ["state", "action", "reward", "done"]:
                 continue
             if key != "state":
@@ -62,11 +119,7 @@ class Client:
                     if sub_key in self.buffer[key] and isinstance(self.buffer[key][sub_key], list):
                         self.buffer[key][sub_key].clear()
 
-    def sync_paras(self):
-        received_data = self.get_data()
-        self.policy.update_weights(received_data["checkpoint"])
-        self.policy.total_steps = received_data["total_steps"]
-
+    # ################### train func ######################
     def train(self):
         while True:
             # reset car
@@ -84,46 +137,25 @@ class Client:
                 # save data to local buffer
                 self.update_data_buffer(data)
                 if data["done"]:
-                    self.send_data()
-                    logging.info(f"sent data")
-                    self.sync_paras()
-                    logging.info(f"got data")
+                    self.save_buffer()
+                    self.sync_weights()
                     break
 
     def eval(self, checkpoint_path):
         pass
 
-    # ================= SOCKET FUNCTION ==================
-    def get_data(self):
-        self.sock.settimeout(self.wait_time)
-        data_len = struct.unpack('>Q', self.sock.recv(8))[0]
-        data = b''
-        while len(data) < data_len:
-            packet = self.sock.recv(min(data_len - len(data), 4096000))
-            if not packet:
-                break
-            data += packet
-
-        if len(data) == data_len:
-            return pickle.loads(data)
-        else:
-            raise Exception('数据接收不完整')
-
-    def send_data(self):
-        data = pickle.dumps(self.buffer)
-        data_len = len(data)
-
-        self.sock.sendall(struct.pack('>Q', data_len))
-        self.sock.sendall(data)
-
-        self.clear_data_buffer()
-
 
 if __name__ == '__main__':
-    ip, port = "10.19.226.34", 9999
+    ip = "10.78.0.78"
+    port = 9999
+    username = "dlfg"
+    password = "Atp67$23h100new"
+    root = "/localhome/dlfg/chenmao/wrcg_rl/server/"
+    # init ssh
+    ssh = create_ssh_client(ip, username, password)
 
-    # init
-    client = Client(ip, port)
+    # init client
+    client = Client()
 
     # train
     print("start training")

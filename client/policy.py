@@ -32,7 +32,8 @@ class DQN:
     def update_epsilon(self, epsilon):
         self.epsilon = epsilon
 
-    def update_weights(self, weights):
+    def update_weights(self, checkpoint):
+        weights = torch.load(checkpoint)
         model_dict = self.model.state_dict()
         for (k, v), new_v in zip(model_dict.items(), weights.values()):
             model_dict[k] = torch.Tensor(new_v)
