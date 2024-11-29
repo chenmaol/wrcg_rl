@@ -178,7 +178,7 @@ class SAC:
         # logprob_losses = []
         gradient_steps = self.gradient_steps
         for i in range(gradient_steps):
-            sample_data = self.buffer[np.random.choice(self.buffer.keys())].sample(self.batch_size)
+            sample_data = self.buffer[np.random.choice(list(self.buffer.keys()))].sample(self.batch_size)
 
             actions_pi, log_prob = self.actor(sample_data["state"])
             log_prob = log_prob.reshape(-1, 1)
