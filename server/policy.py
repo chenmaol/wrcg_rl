@@ -128,6 +128,7 @@ class SAC:
         self.target_critic.load_state_dict(self.critic.state_dict())
         for p in self.target_critic.parameters():
             p.requires_grad = False
+        torch.save(self.actor.state_dict(), 'actor.pt')
 
         self.finetune_ent = True
         if self.finetune_ent:

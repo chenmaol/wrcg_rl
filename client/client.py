@@ -49,7 +49,7 @@ class Client:
         self.buffer_idx = 0
 
         # download config.yaml from server -> load config file
-        self.download_config(ssh)
+        self.download_config()
         with open("config.yaml", 'r') as f:
             self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
 
