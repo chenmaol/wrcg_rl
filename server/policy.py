@@ -265,9 +265,7 @@ class SAC:
                 time.sleep(1)
             if self.count > 0:
                 self.count -= 1
-                logging.info(f"start learning, remained learn times:{self.count}, buffer ptr:{self.buffer.ptr}")
                 loss = self.learn()
-                logging.info(f"end learning, remained learn times:{self.count}, buffer ptr:{self.buffer.ptr}")
                 for key, value in loss.items():
                     self.writer.add_scalar(key, value, self.total_steps)
 

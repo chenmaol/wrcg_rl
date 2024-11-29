@@ -48,7 +48,8 @@ class Server:
         t.start()
 
         self.conn = {}
-        self.pbar = {}
+        self.pbar = {"count": tqdm(desc=f"learning count:{self.policy.count}")}
+
         # connect thread
         while True:
             conn, addr = sock.accept()
@@ -73,6 +74,9 @@ class Server:
     def train(self):
         while True:
             time.sleep(10)
+
+            # update learning count
+            self.pbar["count"].set_description(f"learning count:{self.policy.count}")
 
             # traverse conn folder, detect new data
             for client_ip, buffer_idx in self.conn.items():
