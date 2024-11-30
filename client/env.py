@@ -360,8 +360,8 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             self.repeat_nums = 0
 
         done = True if self.repeat_nums >= self.repeat_thres else False
-        if done:
-            reward = -self.stack_penalty
+        # if done:
+        #     reward = -self.stack_penalty
 
         if end:
             self.reset_game()
