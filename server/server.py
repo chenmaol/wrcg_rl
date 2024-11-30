@@ -22,6 +22,7 @@ class Server:
         sock.bind(("", 9999))
         sock.listen()
 
+        self.exp_name = self.config["exp"]["name"]
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
 
         if run_type == "train":
@@ -31,6 +32,7 @@ class Server:
             self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
             self.config["policy"]["training"]["warmup_steps"] = 0
 
+        self.data_idx = 0
         with tqdm(ncols=100, leave=True) as pbar:
             pbar.set_description(f"training. remained learn times: {self.policy.count}")
             while True:
@@ -122,6 +124,12 @@ class Server:
         conn.sendall(struct.pack('>Q', data_len))
         conn.sendall(data)
 
+    def save_data(self, data):
+        data_idx = self.data_idx
+        self.data_idx += 1
+        with open(f"data_pool/{self.exp_name}_{data_idx}.pkl", 'wb') as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 if __name__ == '__main__':
-    server = Server("configs/exp3_sac_wales.yaml")
+    server = Server("configs/exp1_sac_wales_v1.7.0.yaml")
