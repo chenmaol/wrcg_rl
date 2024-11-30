@@ -68,6 +68,8 @@ class Server:
                 self.policy.update(r_seq)
                 # send back start flag and weights
                 self.sync_paras(conn)
+                # save data into local file
+                self.save_data(data_seq)
 
                 pbar.update(len(r_seq))
                 pbar.set_description(f"Current Value: {self.policy.count:.2f}")

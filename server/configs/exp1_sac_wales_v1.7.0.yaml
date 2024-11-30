@@ -4,7 +4,7 @@ env:
   name: WRCGContinuousEnv
   with_speed: &with_speed true
   num_concat_image: 1
-  repeat_thres: 10
+  repeat_thres: 20
   reward_max_speed: 40
   reward_coef: 1
   stack_penalty: 1
@@ -22,7 +22,7 @@ env:
 buffer:
   name: ReplayBuffer
   exp_name: *exp_name
-  buffer_size: !!float 1.0e5
+  buffer_size: !!float 2.0e5
   state:
     image:
       dim: !!seq
