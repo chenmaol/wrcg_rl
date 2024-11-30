@@ -306,10 +306,10 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             r = speed / self.reward_max_speed
 
         # sudden change speed penalty
-        if len(self.states["speed"]) > 0:
-            last_speed = self.states["speed"][-1]
-            if abs(speed - last_speed) > 20:
-                r -= self.stack_penalty
+        # if len(self.states["speed"]) > 0:
+        #     last_speed = self.states["speed"][-1]
+        #     if abs(speed - last_speed) > 20:
+        #         r -= self.stack_penalty
 
         return r * self.reward_coef - self.action_penalty
 
@@ -360,8 +360,8 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             self.repeat_nums = 0
 
         done = True if self.repeat_nums >= self.repeat_thres else False
-        # if done:
-        #     reward = -self.stack_penalty
+        if done:
+            reward = -self.stack_penalty
 
         if end:
             self.reset_game()
