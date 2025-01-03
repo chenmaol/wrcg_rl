@@ -163,6 +163,6 @@ class MultiInputCritic(nn.Module):
         f = f.view((-1, self.in_features))
         f = self.linear(f)
         if self.config["with_speed"]:
-            f = torch.cat((f, x["speed"] / self.norm["image"]), dim=1)
+            f = torch.cat((f, x["speed"] / self.norm["speed"]), dim=1)
         f = torch.cat([f, a], dim=1)
         return self.q1(f), self.q2(f)

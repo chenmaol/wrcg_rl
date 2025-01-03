@@ -1,16 +1,17 @@
-
+exp:
+  name: &exp_name exp1_sac_newzealand_v1.9.0
 env:
   name: WRCGContinuousEnv
   with_speed: &with_speed true
   num_concat_image: 1
   repeat_thres: 10
-  reward_max_speed: 30
+  reward_max_speed: 40
   reward_coef: 1
-  stack_penalty: 0
+  stack_penalty: 1
   action_penalty: 0
   fps: 2
   gray_scale: False
-  image_size: &image_size 112
+  image_size: &image_size 224
   action_spaces: !!seq
     - 'w'
     - 'a'
@@ -20,7 +21,8 @@ env:
     - *image_size
 buffer:
   name: ReplayBuffer
-  buffer_size: !!float 2.0e5
+  exp_name: *exp_name
+  buffer_size: !!float 1.5e5
   state:
     image:
       dim: !!seq
@@ -44,7 +46,7 @@ buffer:
 policy:
   name: SAC
   action_head: *action_head
-  wait_time: 60.0
+  wait_time: 600.0
   model:
     action_head: *action_head
     with_speed: *with_speed
@@ -53,18 +55,19 @@ policy:
       image: 255.
       speed: 100.
   training:
-    name: exp1_sac
+    name: *exp_name
     lr: !!float 7.3e-4
     batch_size: 256
-    gamma: 0.99
-    warmup_steps: 5000
+    gamma: 0.95
+    warmup_steps: 20000
     max_episode_length: 1000
-    update_interval: 5
+    update_interval: 300
     save_interval: 100
     gradient_steps: 50
     reward_deque_length: 1000
     tau: 0.02
   inference:
-    checkpoint: xxx.pt
+    checkpoint: sac_actor_6600_v1.8.0_wales.pt
+    repeat_thres: 3
 
 

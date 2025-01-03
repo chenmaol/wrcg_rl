@@ -7,6 +7,7 @@ import numpy as np
 import pickle
 import yaml
 import struct
+import os
 
 
 from policy import DQN, SAC
@@ -18,12 +19,16 @@ class Server:
         with open(config_file, 'r') as f:
             self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
             self.config["run_type"] = run_type
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(("", 9999))
-        sock.listen()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind(("", 9999))
+        self.sock.listen()
+
+        self.run_type = run_type
 
         self.exp_name = self.config["exp"]["name"]
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
+
+        self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
 
         if run_type == "train":
             self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
@@ -33,13 +38,25 @@ class Server:
             self.config["policy"]["training"]["warmup_steps"] = 0
 
         self.data_idx = 0
+
+    def start(self):
         with tqdm(ncols=100, leave=True) as pbar:
             pbar.set_description(f"training. remained learn times: {self.policy.count}")
             while True:
-                conn, addr = sock.accept()
+                conn, addr = self.sock.accept()
 
-                t = Thread(target=eval("self.{}".format(run_type)), args=(conn, addr, pbar))
+                t = Thread(target=eval("self.{}".format(self.run_type)), args=(conn, addr, pbar))
                 t.start()
+
+    def load_pretrain_buffer(self, data_root):
+        for data_seq_name in os.listdir(data_root):
+            print(data_seq_name)
+            with open(os.path.join(data_root, data_seq_name), 'rb') as f:
+                data_seq = pickle.load(f)
+
+            self.buffer.update(data_seq)
+            r_seq = data_seq["reward"]
+            self.policy.update(r_seq)
 
     def sync_paras(self, conn):
         d = self.policy.actor.state_dict()
@@ -62,6 +79,9 @@ class Server:
                 data_seq = self.get_data(conn)
                 if len(data_seq) == 0:
                     break
+                # if len(data_seq["reward"]) <= self.config["env"]["repeat_thres"]:
+                #     self.sync_paras(conn)
+                #     continue
                 # put data into buffer
                 self.buffer.update(data_seq)
                 r_seq = data_seq["reward"]
@@ -91,12 +111,13 @@ class Server:
                 data = self.get_data(conn)
                 if len(data) == 0:
                     break
-                episode_rewards.append(data["reward"])
-
-                if data["done"]:
-                    pbar.update(1)
-                    print(np.mean(episode_rewards))
-                    episode_rewards = []
+                self.sync_paras(conn)
+                # episode_rewards.append(data["reward"])
+                #
+                # if data["done"]:
+                #     pbar.update(1)
+                #     print(np.mean(episode_rewards))
+                #     episode_rewards = []
 
         except Exception as err:
             print(err)
@@ -129,9 +150,11 @@ class Server:
     def save_data(self, data):
         data_idx = self.data_idx
         self.data_idx += 1
-        with open(f"data_pool/{self.exp_name}_{data_idx}.pkl", 'wb') as f:
+        with open(f"../../data_pool/data_pool/{self.exp_name}_{data_idx}.pkl", 'wb') as f:
             pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':
-    server = Server("configs/exp1_sac_wales_v1.7.0.yaml")
+    server = Server("configs/exp1_sac_newzealand_v1.9.0.yaml", 'train')
+    # server.load_pretrain_buffer("processed_data")
+    server.start()

@@ -1,5 +1,5 @@
 exp:
-  name: &exp_name exp1_sac_wales_v1.7.0
+  name: &exp_name exp1_sac_japan_v1.8.0
 env:
   name: WRCGContinuousEnv
   with_speed: &with_speed true
@@ -22,7 +22,7 @@ env:
 buffer:
   name: ReplayBuffer
   exp_name: *exp_name
-  buffer_size: !!float 2.0e5
+  buffer_size: !!float 1.5e5
   state:
     image:
       dim: !!seq
@@ -59,7 +59,7 @@ policy:
     lr: !!float 7.3e-4
     batch_size: 256
     gamma: 0.95
-    warmup_steps: 5000
+    warmup_steps: 20000
     max_episode_length: 1000
     update_interval: 300
     save_interval: 100
@@ -67,7 +67,7 @@ policy:
     reward_deque_length: 1000
     tau: 0.02
   inference:
-    checkpoint: sac_actor_3500_v1.7.0_wales_offline.pt
+    checkpoint: sac_actor_9500_v1.7.0_japan_offline.pt
     repeat_thres: 3
 
 

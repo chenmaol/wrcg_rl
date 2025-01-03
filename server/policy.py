@@ -292,3 +292,25 @@ class SAC:
 
     def load_checkpoint(self, checkpoint):
         self.actor.load_state_dict(torch.load(checkpoint))
+
+class OfflineSAC(SAC):
+    def __init__(self, config):
+        super().__init__(config)
+        self.offline_count = 0
+
+    def update_network(self, seq_len):
+        total_steps = self.total_steps
+        total_episodes = self.total_episodes
+
+        if total_steps < self.warmup_steps:
+            return
+
+        self.offline_count += seq_len / self.update_interval
+
+        while self.offline_count >= 1:
+            loss = self.learn()
+            for key, value in loss.items():
+                self.writer.add_scalar(key, value, self.total_steps)
+            self.offline_count -= 1
+        if total_episodes % self.save_interval == 0:
+            torch.save(self.actor.state_dict(), 'checkpoints/sac_actor_{}.pt'.format(total_episodes))

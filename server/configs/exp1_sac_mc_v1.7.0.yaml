@@ -1,10 +1,10 @@
 exp:
-  name: &exp_name exp1_sac_wales_v1.7.0
+  name: &exp_name exp1_sac_mc_v1.7.0
 env:
   name: WRCGContinuousEnv
   with_speed: &with_speed true
   num_concat_image: 1
-  repeat_thres: 10
+  repeat_thres: 20
   reward_max_speed: 40
   reward_coef: 1
   stack_penalty: 1
@@ -67,7 +67,7 @@ policy:
     reward_deque_length: 1000
     tau: 0.02
   inference:
-    checkpoint: sac_actor_3500_v1.7.0_wales_offline.pt
+    checkpoint: sac_actor_4000_v1.7.0_wales.pt
     repeat_thres: 3
 
 

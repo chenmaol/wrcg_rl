@@ -6,6 +6,7 @@ import win32gui
 import win32con
 import numpy as np
 import cv2
+
 from utils import SpeedRecognizer, HighlightRecognizer, Recorder, Action
 from collections import deque
 
@@ -37,6 +38,7 @@ class WRCGBaseEnv:
         self.with_speed = config["with_speed"]
         if self.with_speed:
             self.states["speed"] = deque(maxlen=self.num_concat_image)
+            self.last_speed = None
 
         self.run_type = None
 
@@ -103,6 +105,7 @@ class WRCGBaseEnv:
             if self.with_speed:
                 self.states["speed"].append(np.array([0], dtype=np.uint8))
         self.repeat_nums = 0
+        self.last_speed = None
 
     def reset_key(self):
         """
@@ -294,22 +297,21 @@ class WRCGContinuousEnv(WRCGBaseEnv):
                  ):
         super().__init__(config)
 
+
     def calc_reward(self, speed):
         """
         reward function
         :param speed: speed of current state
         :return: reward of current state
         """
-        if speed > self.reward_max_speed:
-            r = (self.reward_max_speed - speed) / self.reward_max_speed
-        else:
-            r = speed / self.reward_max_speed
+        # if speed > self.reward_max_speed:
+        #     r = 1 + (self.reward_max_speed - speed) / self.reward_max_speed
+        # else:
+        r = min(speed / self.reward_max_speed, 1.0)
 
         # sudden change speed penalty
-        # if len(self.states["speed"]) > 0:
-        #     last_speed = self.states["speed"][-1]
-        #     if abs(speed - last_speed) > 20:
-        #         r -= self.stack_penalty
+        # if self.last_speed and self.last_speed - speed > 30:
+        #     r -= self.stack_penalty
 
         return r * self.reward_coef - self.action_penalty
 
@@ -359,9 +361,10 @@ class WRCGContinuousEnv(WRCGBaseEnv):
         else:
             self.repeat_nums = 0
 
-        done = True if self.repeat_nums >= self.repeat_thres else False
-        # if done:
-        #     reward = -self.stack_penalty
+        done = True if (self.repeat_nums >= self.repeat_thres) or (self.last_speed and self.last_speed - speed_ > 30) else False
+        self.last_speed = speed_
+        if done and not end:
+            reward = -self.stack_penalty
 
         if end:
             self.reset_game()
