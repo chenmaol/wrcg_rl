@@ -361,7 +361,7 @@ class WRCGContinuousEnv(WRCGBaseEnv):
         else:
             self.repeat_nums = 0
 
-        done = True if (self.repeat_nums >= self.repeat_thres) or (self.last_speed and self.last_speed - speed_ > 30) else False
+        done = True if (self.repeat_nums >= self.repeat_thres) or (self.last_speed and self.last_speed - speed_ > 20) else False
         self.last_speed = speed_
         if done and not end:
             reward = -self.stack_penalty
