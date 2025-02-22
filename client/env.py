@@ -35,6 +35,8 @@ class WRCGBaseEnv:
         self.resize_size = config["resize_size"]
         self.fps = config["fps"]
 
+        self.last_time = time.time()
+
         self.with_speed = config["with_speed"]
         if self.with_speed:
             self.states["speed"] = deque(maxlen=self.num_concat_image)
@@ -214,126 +216,12 @@ class WRCGBaseEnv:
         """
         return self.highlightRecognizer.check_highlight(img)
 
+    def act(self, action):
+        raise Exception('not implement')
+    
     def step(self, action):
-        raise NotImplemented
-
-
-class WRCGDiscreteEnv(WRCGBaseEnv):
-    """
-    Environment wrapper for WRCG
-    """
-    def __init__(self,
-                 config,
-                 ):
-        super().__init__(config)
-
-    def calc_reward(self, speed):
-        """
-        reward function
-        :param speed: speed of current state
-        :return: reward of current state
-        """
-        return min(speed, self.reward_max_speed) / self.reward_max_speed * self.reward_coef - self.action_penalty
-
-    def step(self, action):
-        # do actions
-        action_key = self.action_spaces[action]
-        for key in ['w', 's', 'a', 'd']:
-            if key in action_key:
-                self.action.down_key(key)
-        if len(action_key) == 2:
-            time.sleep(1 / self.fps / 2)
-        else:
-            time.sleep(1 / self.fps)
-        self.reset_key()
-        if len(action_key) == 2:
-            time.sleep(1 / self.fps / 2)
-
-        # get current capture
-        img_ = self.get_frame()
-
-        # calc speed
-        speed_ = self.get_speed(img_)
-
-        # calc reward
-        reward = self.calc_reward(speed_)
-
-        # update states
-        state_ = self.img_preprocess(img_)
-
-        self.states["image"].append(state_)
-        if self.with_speed:
-            self.states["speed"].append(np.array([speed_], dtype=np.uint8))
-
-        # if game end
-        self.action.move_mouse(self.loc_real(self.highlight_ctr), repeat=5, interval=0.001)
-        end = True if self.game_end_check(img_) else False
-
-        # if car stack (done)
-        if speed_ == 0:
-            self.repeat_nums += 1
-        else:
-            self.repeat_nums = 0
-        done = True if self.repeat_nums >= self.repeat_thres else False
-        if done:
-            reward -= self.stack_penalty
-
-        if end:
-            self.reset_game()
-
-        return {
-            "state_prime": self.get_states(),
-            "reward": reward,
-            "done": done or end
-            }
-
-
-class WRCGContinuousEnv(WRCGBaseEnv):
-    """
-    Environment wrapper for WRCG
-    """
-    def __init__(self,
-                 config,
-                 ):
-        super().__init__(config)
-
-
-    def calc_reward(self, speed):
-        """
-        reward function
-        :param speed: speed of current state
-        :return: reward of current state
-        """
-        # if speed > self.reward_max_speed:
-        #     r = 1 + (self.reward_max_speed - speed) / self.reward_max_speed
-        # else:
-        r = min(speed / self.reward_max_speed, 1.0)
-
-        # sudden change speed penalty
-        # if self.last_speed and self.last_speed - speed > 30:
-        #     r -= self.stack_penalty
-
-        return r * self.reward_coef - self.action_penalty
-
-    def step(self, action):
-        # take action
-        # t1 = max(action[0], 0) / self.fps
-        t1 = (action[0] + 1) / 2 / self.fps
-        d = 1 if action[1] > 0 else 2
-        t2 = abs(action[1]) / self.fps
-        self.action.down_key(self.action_spaces[0])
-        self.action.down_key(self.action_spaces[d])
-        time.sleep(min(t1, t2))
-        if t1 >= t2:
-            self.action.up_key(self.action_spaces[d])
-        else:
-            self.action.up_key(self.action_spaces[0])
-        time.sleep(max(t1, t2) - min(t1, t2))
-        if t1 >= t2:
-            self.action.up_key(self.action_spaces[0])
-        else:
-            self.action.up_key(self.action_spaces[d])
-        time.sleep(1 / self.fps - max(t1, t2))
+        # do action
+        self.act(action)
 
         # get current capture
         img_ = self.get_frame()
@@ -375,3 +263,84 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             "reward": np.array(reward).reshape(1),
             "done": np.array(done or end).reshape(1)
             }
+
+
+class WRCGDiscreteEnv(WRCGBaseEnv):
+    """
+    Environment wrapper for WRCG
+    """
+    def __init__(self,
+                 config,
+                 ):
+        super().__init__(config)
+
+    def calc_reward(self, speed):
+        """
+        reward function
+        :param speed: speed of current state
+        :return: reward of current state
+        """
+        return min(speed, self.reward_max_speed) / self.reward_max_speed * self.reward_coef - self.action_penalty
+
+    def act(self, action):
+        # do actions
+        action_key = self.action_spaces[action]
+
+        # wait for last action finished
+        while time.time() - self.last_time < 1 / self.fps:
+            pass
+        self.reset_key()
+        self.last_time = time.time()
+
+        # do current action
+        for key in ['w', 's', 'a', 'd']:
+            if key in action_key:
+                self.action.down_key(key)
+
+
+
+class WRCGContinuousEnv(WRCGBaseEnv):
+    """
+    Environment wrapper for WRCG
+    """
+    def __init__(self,
+                 config,
+                 ):
+        super().__init__(config)
+
+
+    def calc_reward(self, speed):
+        """
+        reward function
+        :param speed: speed of current state
+        :return: reward of current state
+        """
+        # if speed > self.reward_max_speed:
+        #     r = 1 + (self.reward_max_speed - speed) / self.reward_max_speed
+        # else:
+        r = min(speed / self.reward_max_speed, 1.0)
+
+        # sudden change speed penalty
+        # if self.last_speed and self.last_speed - speed > 30:
+        #     r -= self.stack_penalty
+
+        return r * self.reward_coef - self.action_penalty
+
+    def act(self, action):
+        t1 = (action[0] + 1) / 2 / self.fps
+        d = 1 if action[1] > 0 else 2
+        t2 = abs(action[1]) / self.fps
+        self.action.down_key(self.action_spaces[0])
+        self.action.down_key(self.action_spaces[d])
+        time.sleep(min(t1, t2))
+        if t1 >= t2:
+            self.action.up_key(self.action_spaces[d])
+        else:
+            self.action.up_key(self.action_spaces[0])
+        time.sleep(max(t1, t2) - min(t1, t2))
+        if t1 >= t2:
+            self.action.up_key(self.action_spaces[0])
+        else:
+            self.action.up_key(self.action_spaces[d])
+        time.sleep(1 / self.fps - max(t1, t2))
+

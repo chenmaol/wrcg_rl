@@ -1,4 +1,4 @@
-from model import MultiInputModel, MultiInputActor, MultiInputCritic
+from model import MultiInputMLP, MultiInputActor, MultiInputCritic, LaneNet
 import numpy as np
 import torch
 
@@ -8,7 +8,20 @@ class DQN:
         self.device = "cuda"
         self.epsilon = 1.0
 
-        self.model = MultiInputModel(config).to(self.device)
+        self.model = MultiInputMLP(config).to(self.device)
+        # load lane model weights
+        self.lane_model = LaneNet(pretrained=False)
+        state_dict = torch.load("ep049.pth", map_location='cpu')['model']
+        compatible_state_dict = {}
+        for k, v in state_dict.items():
+            if 'module.' in k:
+                compatible_state_dict[k[7:]] = v
+            else:
+                compatible_state_dict[k] = v
+
+        self.lane_model.load_state_dict(compatible_state_dict, strict=False)
+        self.lane_model.eval().to(self.device)
+
         self.action_head = config["action"]["head"]
         self.state_keys = config["state"].keys()
         self.config = config
@@ -18,8 +31,9 @@ class DQN:
         if training and np.random.rand() < self.epsilon:
             a = np.random.randint(0, self.action_head)
         else:
-            f = self.preprocess(x)
-            q = self.model(f)
+            x = self.preprocess(x)
+            x["lane"] = self.lane_model(x['image'])
+            q = self.model(x)
             a = torch.argmax(q).item()
         return a
 

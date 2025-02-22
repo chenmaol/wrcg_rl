@@ -155,6 +155,6 @@ class Server:
 
 
 if __name__ == '__main__':
-    server = Server("configs/exp1_sac_newzealand_v1.9.0.yaml", 'train')
+    server = Server("configs/exp1_dqn_germany_v1.10.0.yaml", 'train')
     # server.load_pretrain_buffer("processed_data")
     server.start()

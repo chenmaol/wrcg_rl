@@ -1,5 +1,5 @@
 import time
-from model import MultiInputModel, MultiInputCritic, MultiInputActor
+from model import MultiInputModel, MultiInputCritic, MultiInputActor, MultiInputMLP
 import torch.nn.functional as F
 import torch
 import numpy as np
@@ -15,18 +15,17 @@ class DQN:
             self,
             config,
     ):
-        base_config = config["base"]
-        train_config = config["train"]
-        self.base_config = base_config
+        self.config = config
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
         # base config
-        self.network = MultiInputModel(base_config).to(self.device)
-        self.target_network = MultiInputModel(base_config).to(self.device)
+        self.network = MultiInputMLP(config["model"]).to(self.device)
+        self.target_network = MultiInputMLP(config["model"]).to(self.device)
         self.target_network.load_state_dict(self.network.state_dict())
 
         # training config
+        train_config = self.config["training"]
         self.name = train_config["name"]
         self.lr = train_config["lr"]
         self.epsilon = train_config["epsilon"]
