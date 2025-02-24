@@ -10,13 +10,77 @@ import logging
 
 logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class DQN:
+class BasePolicy:
+    def __init__(self, config):
+        self.config = config
+        self.update_count = 0
+        self.total_steps = 0
+        self.total_episodes = 0
+        self.writer = SummaryWriter(log_dir='./logs/' + config["training"]["name"])
+        self.episode_reward = deque(maxlen=config["training"]["reward_deque_length"])
+        self.episode_len = deque(maxlen=config["training"]["reward_deque_length"])
+        self.warmup_steps = config["training"]["warmup_steps"]
+        self.update_interval = config["training"]["update_interval"]
+        self.save_interval = config["training"]["save_interval"]
+
+    def update_plot(self, r_seq):
+        # update steps
+        self.total_steps += len(r_seq)
+        self.total_episodes += 1
+
+        # update performance
+        self.episode_reward.append(np.sum(r_seq))
+        self.episode_len.append(len(r_seq))
+        self.writer.add_scalar("rollout/ep_rew_mean", np.mean(list(self.episode_reward)), self.total_steps)
+        self.writer.add_scalar("rollout/ep_len_mean", np.mean(list(self.episode_len)), self.total_steps)
+
+    def load_checkpoint(self, checkpoint):
+        if self.config["policy"]["name"] == "DQN":
+            self.network.load_state_dict(torch.load(checkpoint))
+        elif self.config["policy"]["name"] == "SAC":
+            self.actor.load_state_dict(torch.load(checkpoint))
+
+    def save_checkpoint(self, checkpoint_path):
+        if self.config["policy"]["name"] == "DQN":
+            torch.save(self.network.state_dict(), checkpoint_path)
+        elif self.config["policy"]["name"] == "SAC":
+            torch.save(self.actor.state_dict(), checkpoint_path)
+
+    def learn_thread(self):
+        while True:
+            while self.update_count < 1:
+                time.sleep(1)
+            if self.update_count > 0:
+                self.update_count -= 1
+                loss = self.learn()
+                for key, value in loss.items():
+                    self.writer.add_scalar(key, value, self.total_steps)
+
+    def update_network(self, seq_len, total_steps, total_episodes):
+        self.update_count += seq_len / self.update_interval
+        if total_steps < self.warmup_steps:
+            return
+        
+        if total_episodes % self.save_interval == 0:
+            checkpoint_path = 'checkpoints/{}_{}.pt'.format(self.config["policy"]["name"], total_episodes)
+            self.save_checkpoint(checkpoint_path)
+
+    def update(self, r_seq):
+        total_steps = self.total_steps
+        total_episodes = self.total_episodes
+
+        # update performance for plotting
+        self.update_plot(r_seq)
+        # update network
+        self.update_network(len(r_seq), total_steps, total_episodes)
+
+
+class DQN(BasePolicy):
     def __init__(
             self,
             config,
     ):
-        self.config = config
-
+        super().__init__(config)  # 确保调用基类构造函数
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
         # base config
@@ -40,18 +104,15 @@ class DQN:
         self.reward_deque_length = train_config["reward_deque_length"]
 
         self.optimizer = torch.optim.Adam(self.network.parameters(), self.lr)
-        self.total_steps = 0
-        self.total_episodes = 0
         self.epsilon_decay = (self.epsilon - self.epsilon_min) / self.epsilon_steps
-        self.writer = SummaryWriter(log_dir='./logs/' + self.name)
-        self.episode_reward = deque(maxlen=self.reward_deque_length)
-        self.episode_len = deque(maxlen=self.reward_deque_length)
-        self.update_flag = False
+
+        self.learn_thread = threading.Thread(target=self.learn_thread)
+        self.learn_thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
+        self.learn_thread.start()
 
     def learn(self, buffer):
         mean_loss = 0
-        K = self.gradient_steps
-        for i in range(K):
+        for i in range(self.gradient_steps):
             sample_data = buffer.sample(self.batch_size)
 
             next_q = self.target_network(sample_data["state_prime"]).detach()
@@ -63,61 +124,36 @@ class DQN:
             loss.backward()
             self.optimizer.step()
             mean_loss += loss.item()
-        return mean_loss / K
+        return mean_loss / self.gradient_steps
 
-    def update_network(self, buffer):
-        total_steps = self.total_steps
-        total_episodes = self.total_episodes
-
+    def update_network(self, seq_len, total_steps, total_episodes):
+        self.update_count += seq_len / self.update_interval
         if total_steps < self.warmup_steps:
             return
+        
+        if total_episodes % self.save_interval == 0:
+            checkpoint_path = 'checkpoints/{}_{}.pt'.format(self.config["policy"]["name"], total_episodes)
+            self.save_checkpoint(checkpoint_path)
 
-        if total_episodes % self.update_interval == 0:
-            while self.update_flag:
-                time.sleep(0.1)
-            self.update_flag = True
-            loss = self.learn(buffer)
-            self.update_flag = False
-            self.writer.add_scalar('loss', loss, total_steps)
-
-        if total_episodes % self.target_update_interval == 0:
-            self.target_network.load_state_dict(self.network.state_dict())
-            torch.save(self.network.state_dict(), 'checkpoints/dqn_{}.pt'.format(total_steps))
-
-    def update_plot(self, r_seq):
-        # update steps
-        self.total_steps += len(r_seq)
-        self.total_episodes += 1
-
-        # update performance
-        self.episode_reward.append(np.sum(r_seq))
-        self.episode_len.append(len(r_seq))
-        self.writer.add_scalar("rollout/ep_rew_mean", np.mean(list(self.episode_reward)), self.total_steps)
-        self.writer.add_scalar("rollout/ep_len_mean", np.mean(list(self.episode_len)), self.total_steps)
-        self.writer.add_scalar("rollout/exploration_rate", self.epsilon, self.total_steps)
+        # DQN
+        if total_episodes % self.target_update_interval:
+            self.hard_update()
+        
+        self.update_epsilon(seq_len)
 
     def update_epsilon(self, episode_len):
         self.epsilon = max(self.epsilon - self.epsilon_decay * episode_len, self.epsilon_min)
 
-    def update(self, buffer, r_seq):
-        # update performance for plotting
-        self.update_epsilon(len(r_seq))
-        # update performance for plotting
-        self.update_plot(r_seq)
-        # update network
-        self.update_network(buffer)
-
-    def load_checkpoint(self, checkpoint):
-        self.network.load_state_dict(torch.load(checkpoint))
+    def hard_update(self):
+        self.target_network.load_state_dict(self.network.state_dict())
 
 
-class SAC:
+class SAC(BasePolicy):
     def __init__(
             self,
             config,
     ):
-        self.config = config
-
+        super().__init__(config)  # 确保调用基类构造函数
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
         # base config
@@ -151,16 +187,6 @@ class SAC:
         self.optimizer_actor = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.optimizer_critic = torch.optim.Adam(self.critic.parameters(), self.lr)
         self.ent_coef_optimizer = torch.optim.Adam([self.log_ent_coef], self.lr)
-
-        self.total_steps = 0
-        self.total_episodes = 0
-        self.writer = SummaryWriter(log_dir='./logs/' + self.name)
-        self.episode_reward = deque(maxlen=self.reward_deque_length)
-        self.episode_len = deque(maxlen=self.reward_deque_length)
-
-        self.count = 0
-
-        self.buffer = None
 
         self.learn_thread = threading.Thread(target=self.learn_thread)
         self.learn_thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
@@ -244,53 +270,10 @@ class SAC:
                 "ent_coef": ent_coefs / gradient_steps,
                 }
 
-    def update_network(self, seq_len):
-        total_steps = self.total_steps
-        total_episodes = self.total_episodes
-
-        if total_steps < self.warmup_steps:
-            return
-
-        self.count += seq_len / self.update_interval
-
-        if total_episodes % self.save_interval == 0:
-            torch.save(self.actor.state_dict(), 'checkpoints/sac_actor_{}.pt'.format(total_episodes))
-
-    def learn_thread(self):
-        while True:
-            while self.count < 1:
-                time.sleep(1)
-            if self.count > 0:
-                self.count -= 1
-                logging.info(f"start learning, remained learn times:{self.count}, buffer ptr:{self.buffer.ptr}")
-                loss = self.learn()
-                logging.info(f"end learning, remained learn times:{self.count}, buffer ptr:{self.buffer.ptr}")
-                for key, value in loss.items():
-                    self.writer.add_scalar(key, value, self.total_steps)
-
-    def update_plot(self, r_seq):
-        # update steps
-        self.total_steps += len(r_seq)
-        self.total_episodes += 1
-
-        # update performance
-        self.episode_reward.append(np.sum(r_seq))
-        self.episode_len.append(len(r_seq))
-        self.writer.add_scalar("rollout/ep_rew_mean", np.mean(list(self.episode_reward)), self.total_steps)
-        self.writer.add_scalar("rollout/ep_len_mean", np.mean(list(self.episode_len)), self.total_steps)
-
-    def update(self, r_seq):
-        # update performance for plotting
-        self.update_plot(r_seq)
-        # update network
-        self.update_network(len(r_seq))
-
     def soft_update(self):
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * param.data + (1.0 - self.tau) * target_param.data)
 
-    def load_checkpoint(self, checkpoint):
-        self.actor.load_state_dict(torch.load(checkpoint))
 
 class OfflineSAC(SAC):
     def __init__(self, config):
@@ -312,4 +295,5 @@ class OfflineSAC(SAC):
                 self.writer.add_scalar(key, value, self.total_steps)
             self.offline_count -= 1
         if total_episodes % self.save_interval == 0:
-            torch.save(self.actor.state_dict(), 'checkpoints/sac_actor_{}.pt'.format(total_episodes))
+            checkpoint = 'checkpoints/sac_actor_{}.pt'.format(total_episodes)
+            torch.save(self.actor.state_dict(), checkpoint)

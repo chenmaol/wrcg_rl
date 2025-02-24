@@ -21,7 +21,7 @@ env:
 buffer:
   name: ReplayBuffer
   exp_name: *exp_name
-  buffer_size: !!float 2.0e5
+  buffer_size: !!float 1.0e5
   state:
     image:
       dim: !!seq
@@ -43,7 +43,7 @@ buffer:
     dim: 1
     type: np.bool_
 policy:
-  name: SAC
+  name: DQN
   action_head: *action_head
   wait_time: 600.0
   model:
@@ -64,8 +64,9 @@ policy:
     warmup_steps: 5000
     max_episode_length: 1000
     update_interval: 300
+    target_update_interval: 3000
     save_interval: 100
-    gradient_steps: 50
+    gradient_steps: 10
     reward_deque_length: 1000
   inference:
     checkpoint:

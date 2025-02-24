@@ -178,7 +178,7 @@ class MultiInputMLP(nn.Module):
         super(MultiInputMLP, self).__init__()
         self.config = config
         input_channel = 72  # [img_num_t, 2, 18]
-        action_head = config["action"]["head"]
+        action_head = config["action_head"]
 
         self.hid_channel = 64
         self.linear = nn.Sequential(
@@ -186,14 +186,14 @@ class MultiInputMLP(nn.Module):
             nn.ReLU(),
         )
 
-        if "speed" in self.config["state"]:
+        if self.config["with_speed"]:
             self.hid_channel += 1
         self.advantage = nn.Linear(self.hid_channel, action_head)
         self.value = nn.Linear(self.hid_channel, 1)
 
     def forward(self, x):
         f = self.linear(x["lane"])
-        if "speed" in self.config["state"]:
+        if self.config["with_speed"]:
             f = torch.cat((f, x["speed"]), dim=1)
         advantage = self.advantage(f)
         value = self.value(f)

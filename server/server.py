@@ -28,7 +28,7 @@ class Server:
         self.exp_name = self.config["exp"]["name"]
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
 
-        self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
+        #self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
 
         if run_type == "train":
             self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
@@ -79,9 +79,7 @@ class Server:
                 data_seq = self.get_data(conn)
                 if len(data_seq) == 0:
                     break
-                # if len(data_seq["reward"]) <= self.config["env"]["repeat_thres"]:
-                #     self.sync_paras(conn)
-                #     continue
+
                 # put data into buffer
                 self.buffer.update(data_seq)
                 r_seq = data_seq["reward"]
