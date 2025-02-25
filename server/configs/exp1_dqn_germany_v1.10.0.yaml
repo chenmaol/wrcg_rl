@@ -3,13 +3,15 @@ exp:
 env:
   name: WRCGDiscreteEnv
   with_speed: &with_speed true
+  num_concat_image: 1
   repeat_thres: 20
   reward_max_speed: 40
   reward_coef: 1
   stack_penalty: 1
   action_penalty: 0
   fps: 5
-  image_size: &image_size 224
+  gray_scale: False
+  image_size: &image_size 288
   action_spaces: !!seq
     - 'w'
     - 'a'
@@ -21,20 +23,20 @@ env:
 buffer:
   name: ReplayBuffer
   exp_name: *exp_name
-  buffer_size: !!float 1.0e5
+  buffer_size: !!float 2e4
   state:
     image:
       dim: !!seq
         - 3 # equal to num_concat_image * (1 if gray_scale else 3)
         - *image_size
-        - *image_size
+        - 800
       type: np.uint8
     speed: # if with_speed is true in env
       dim: !!seq
         - 1
       type: np.uint8
   action:
-    dim: &action_head 4
+    dim: &action_head 1
     type: np.float32
   reward:
     dim: 1
@@ -43,8 +45,8 @@ buffer:
     dim: 1
     type: np.bool_
 policy:
-  name: DQN
-  action_head: *action_head
+  name: DQNLane
+  action_head: 4
   wait_time: 600.0
   model:
     action_head: *action_head
@@ -61,7 +63,7 @@ policy:
     epsilon: 1.0
     epsilon_min: 0.1
     epsilon_steps: !!float 1.0e6
-    warmup_steps: 5000
+    warmup_steps: 0
     max_episode_length: 1000
     update_interval: 300
     target_update_interval: 3000

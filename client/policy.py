@@ -6,24 +6,11 @@ import torch
 class DQN:
     def __init__(self, config):
         self.device = "cuda"
-        self.epsilon = 1.0
+        self.epsilon = 1.0 # TODO: update from server
 
-        self.model = MultiInputMLP(config).to(self.device)
-        # load lane model weights
-        self.lane_model = LaneNet(pretrained=False)
-        state_dict = torch.load("ep049.pth", map_location='cpu')['model']
-        compatible_state_dict = {}
-        for k, v in state_dict.items():
-            if 'module.' in k:
-                compatible_state_dict[k[7:]] = v
-            else:
-                compatible_state_dict[k] = v
-
-        self.lane_model.load_state_dict(compatible_state_dict, strict=False)
-        self.lane_model.eval().to(self.device)
-
-        self.action_head = config["action"]["head"]
-        self.state_keys = config["state"].keys()
+        self.model = MultiInputMLP(config["model"]).to(self.device)
+        
+        self.action_head = config["action_head"]
         self.config = config
 
     @torch.no_grad()
@@ -32,15 +19,14 @@ class DQN:
             a = np.random.randint(0, self.action_head)
         else:
             x = self.preprocess(x)
-            x["lane"] = self.lane_model(x['image'])
             q = self.model(x)
             a = torch.argmax(q).item()
         return a
 
     def preprocess(self, x):
         output = {}
-        for key in self.state_keys:
-            output[key] = torch.from_numpy(x[key]).float().unsqueeze(0).to(self.device)
+        for key, value in x.items():
+            output[key] = torch.from_numpy(value).float().unsqueeze(0).to(self.device)
         return output
 
     def update_epsilon(self, epsilon):
@@ -54,6 +40,31 @@ class DQN:
         for p in self.model.parameters():
             p.requires_grad = False
 
+class DQNLane(DQN):
+    def __init__(self, config):
+        super().__init__(config)
+
+        # load lane model weights
+        self.lane_model = LaneNet(backbone="18", pretrained=False, cls_dim=(201, 18, 4), use_aux=False)
+        state_dict = torch.load("ep049.pth", map_location='cpu')['model']
+        compatible_state_dict = {}
+        for k, v in state_dict.items():
+            if 'module.' in k:
+                compatible_state_dict[k[7:]] = v
+            else:
+                compatible_state_dict[k] = v
+
+        self.lane_model.load_state_dict(compatible_state_dict, strict=False)
+        self.lane_model.eval().to(self.device)
+    
+    def preprocess(self, x):
+        output = {}
+        for key, value in x.items():
+            if key == "image":
+                output[key] = self.lane_model(torch.from_numpy(value).float().unsqueeze(0).to(self.device))
+            else:
+                output[key] = torch.from_numpy(value).float().unsqueeze(0).to(self.device)
+        return output
 
 class SAC:
     def __init__(self, config):

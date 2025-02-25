@@ -75,7 +75,8 @@ class WRCGBaseEnv:
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = np.expand_dims(img, axis=-1)
-        img = cv2.resize(img, self.resize_size)
+        # img = cv2.resize(img, self.resize_size) # TODO
+        img = cv2.resize(img, (800, 288))
         img = np.transpose(img, (2, 0, 1))
         return img
 
@@ -218,7 +219,7 @@ class WRCGBaseEnv:
 
     def act(self, action):
         raise Exception('not implement')
-    
+
     def step(self, action):
         # do action
         self.act(action)
@@ -249,7 +250,8 @@ class WRCGBaseEnv:
         else:
             self.repeat_nums = 0
 
-        done = True if (self.repeat_nums >= self.repeat_thres) or (self.last_speed and self.last_speed - speed_ > 20) else False
+        done = True if (self.repeat_nums >= self.repeat_thres) or (
+                    self.last_speed and self.last_speed - speed_ > 20) else False
         self.last_speed = speed_
         if done and not end:
             reward = -self.stack_penalty
@@ -259,16 +261,17 @@ class WRCGBaseEnv:
 
         return {
             "state_prime": self.get_states(),
-            "action": action,
+            "action": action if len(np.array(action).shape) != 0 else np.array(action).reshape(1),
             "reward": np.array(reward).reshape(1),
             "done": np.array(done or end).reshape(1)
-            }
+        }
 
 
 class WRCGDiscreteEnv(WRCGBaseEnv):
     """
     Environment wrapper for WRCG
     """
+
     def __init__(self,
                  config,
                  ):
@@ -298,16 +301,15 @@ class WRCGDiscreteEnv(WRCGBaseEnv):
                 self.action.down_key(key)
 
 
-
 class WRCGContinuousEnv(WRCGBaseEnv):
     """
     Environment wrapper for WRCG
     """
+
     def __init__(self,
                  config,
                  ):
         super().__init__(config)
-
 
     def calc_reward(self, speed):
         """

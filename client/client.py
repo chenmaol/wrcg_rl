@@ -120,7 +120,7 @@ class Client:
 
 
 if __name__ == '__main__':
-    ip, port = "10.19.226.63", 9999
+    ip, port = "10.19.226.34", 9999
 
     # init
     client = Client(ip, port)

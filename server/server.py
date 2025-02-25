@@ -41,7 +41,7 @@ class Server:
 
     def start(self):
         with tqdm(ncols=100, leave=True) as pbar:
-            pbar.set_description(f"training. remained learn times: {self.policy.count}")
+            pbar.set_description(f"training. remained learn times: {self.policy.update_count}")
             while True:
                 conn, addr = self.sock.accept()
 
@@ -59,7 +59,7 @@ class Server:
             self.policy.update(r_seq)
 
     def sync_paras(self, conn):
-        d = self.policy.actor.state_dict()
+        d = self.policy.get_checkpoint()
         data = {"checkpoint": {}, "total_steps": self.policy.total_steps}
         for k, v in d.items():
             data["checkpoint"][k] = v.cpu().numpy()
@@ -90,7 +90,7 @@ class Server:
                 self.save_data(data_seq)
 
                 pbar.update(len(r_seq))
-                pbar.set_description(f"Current Value: {self.policy.count:.2f}")
+                pbar.set_description(f"Current Value: {self.policy.update_count:.2f}")
 
         except Exception as err:
             print(err)

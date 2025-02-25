@@ -10,6 +10,7 @@ import logging
 
 logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 class BasePolicy:
     def __init__(self, config):
         self.config = config
@@ -35,16 +36,22 @@ class BasePolicy:
         self.writer.add_scalar("rollout/ep_len_mean", np.mean(list(self.episode_len)), self.total_steps)
 
     def load_checkpoint(self, checkpoint):
-        if self.config["policy"]["name"] == "DQN":
+        if "DQN" in self.config["name"]:
             self.network.load_state_dict(torch.load(checkpoint))
-        elif self.config["policy"]["name"] == "SAC":
+        elif "SAC" in self.config["name"]:
             self.actor.load_state_dict(torch.load(checkpoint))
 
     def save_checkpoint(self, checkpoint_path):
-        if self.config["policy"]["name"] == "DQN":
+        if "DQN" in self.config["name"]:
             torch.save(self.network.state_dict(), checkpoint_path)
-        elif self.config["policy"]["name"] == "SAC":
+        elif "SAC" in self.config["name"]:
             torch.save(self.actor.state_dict(), checkpoint_path)
+
+    def get_checkpoint(self):
+        if "DQN" in self.config["name"]:
+            return self.network.state_dict()
+        elif "SAC" in self.config["name"]:
+            return self.actor.state_dict()
 
     def learn_thread(self):
         while True:
@@ -60,7 +67,7 @@ class BasePolicy:
         self.update_count += seq_len / self.update_interval
         if total_steps < self.warmup_steps:
             return
-        
+
         if total_episodes % self.save_interval == 0:
             checkpoint_path = 'checkpoints/{}_{}.pt'.format(self.config["policy"]["name"], total_episodes)
             self.save_checkpoint(checkpoint_path)
@@ -110,15 +117,16 @@ class DQN(BasePolicy):
         self.learn_thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
         self.learn_thread.start()
 
-    def learn(self, buffer):
+    def learn(self):
         mean_loss = 0
         for i in range(self.gradient_steps):
-            sample_data = buffer.sample(self.batch_size)
+            sample_data = self.buffer.sample(self.batch_size)
 
             next_q = self.target_network(sample_data["state_prime"]).detach()
             current_q = self.network(sample_data["state_prime"]).detach()
             td_target = sample_data["reward"] + \
-                        (1. - sample_data["done"]) * self.gamma * next_q.gather(1, torch.max(current_q, 1)[1].unsqueeze(1))
+                        (1. - sample_data["done"]) * self.gamma * next_q.gather(1,
+                                                                                torch.max(current_q, 1)[1].unsqueeze(1))
             loss = F.mse_loss(self.network(sample_data["state"]).gather(1, sample_data["action"].long()), td_target)
             self.optimizer.zero_grad()
             loss.backward()
@@ -130,15 +138,15 @@ class DQN(BasePolicy):
         self.update_count += seq_len / self.update_interval
         if total_steps < self.warmup_steps:
             return
-        
+
         if total_episodes % self.save_interval == 0:
-            checkpoint_path = 'checkpoints/{}_{}.pt'.format(self.config["policy"]["name"], total_episodes)
+            checkpoint_path = 'checkpoints/{}_{}.pt'.format(self.config["name"], total_episodes)
             self.save_checkpoint(checkpoint_path)
 
         # DQN
         if total_episodes % self.target_update_interval:
             self.hard_update()
-        
+
         self.update_epsilon(seq_len)
 
     def update_epsilon(self, episode_len):
