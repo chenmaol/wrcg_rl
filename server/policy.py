@@ -13,6 +13,7 @@ logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctim
 
 class BasePolicy:
     def __init__(self, config):
+        ''' Initialize the base policy with configuration settings '''
         self.config = config
         self.update_count = 0
         self.total_steps = 0
@@ -25,6 +26,7 @@ class BasePolicy:
         self.save_interval = config["training"]["save_interval"]
 
     def update_plot(self, r_seq):
+        ''' Update the plot with the given reward sequence '''
         # update steps
         self.total_steps += len(r_seq)
         self.total_episodes += 1
@@ -36,24 +38,28 @@ class BasePolicy:
         self.writer.add_scalar("rollout/ep_len_mean", np.mean(list(self.episode_len)), self.total_steps)
 
     def load_checkpoint(self, checkpoint):
+        ''' Load the model checkpoint from the specified file '''
         if "DQN" in self.config["name"]:
             self.network.load_state_dict(torch.load(checkpoint))
         elif "SAC" in self.config["name"]:
             self.actor.load_state_dict(torch.load(checkpoint))
 
     def save_checkpoint(self, checkpoint_path):
+        ''' Save the model checkpoint to the specified file path '''
         if "DQN" in self.config["name"]:
             torch.save(self.network.state_dict(), checkpoint_path)
         elif "SAC" in self.config["name"]:
             torch.save(self.actor.state_dict(), checkpoint_path)
 
     def get_checkpoint(self):
+        ''' Retrieve the current model checkpoint '''
         if "DQN" in self.config["name"]:
             return self.network.state_dict()
         elif "SAC" in self.config["name"]:
             return self.actor.state_dict()
 
     def learn_thread(self):
+        ''' Thread function for learning process '''
         while True:
             while self.update_count < 1:
                 time.sleep(1)
@@ -64,15 +70,16 @@ class BasePolicy:
                     self.writer.add_scalar(key, value, self.total_steps)
 
     def update_network(self, seq_len, total_steps, total_episodes):
-        self.update_count += seq_len / self.update_interval
-        if total_steps < self.warmup_steps:
-            return
-
+        ''' Update the network based on the sequence length and total steps '''
+        if total_steps >= self.warmup_steps:
+            self.update_count += seq_len / self.update_interval
+        
         if total_episodes % self.save_interval == 0:
             checkpoint_path = 'checkpoints/{}_{}.pt'.format(self.config["policy"]["name"], total_episodes)
             self.save_checkpoint(checkpoint_path)
 
     def update(self, r_seq):
+        ''' Update the policy with the given reward sequence '''
         total_steps = self.total_steps
         total_episodes = self.total_episodes
 
@@ -82,6 +89,7 @@ class BasePolicy:
         self.update_network(len(r_seq), total_steps, total_episodes)
 
     def sync(self):
+        ''' Synchronize the current state of the policy '''
         d = self.get_checkpoint()
         data = {"checkpoint": {}, "total_steps": self.total_steps}
         for k, v in d.items():
@@ -93,6 +101,7 @@ class DQN(BasePolicy):
             self,
             config,
     ):
+        ''' Initialize the DQN policy with configuration settings '''
         super().__init__(config)  # 确保调用基类构造函数
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
@@ -124,6 +133,7 @@ class DQN(BasePolicy):
         self.thread.start()
 
     def learn(self):
+        ''' Perform a learning step and return the loss '''
         mean_loss = 0
         for i in range(self.gradient_steps):
             sample_data = self.buffer.sample(self.batch_size)
@@ -141,6 +151,7 @@ class DQN(BasePolicy):
         return {"loss": mean_loss / self.gradient_steps}
 
     def update_network(self, seq_len, total_steps, total_episodes):
+        ''' Update the DQN network based on the sequence length and total steps '''
         self.update_count += seq_len / self.update_interval
         if total_steps < self.warmup_steps:
             return
@@ -156,17 +167,21 @@ class DQN(BasePolicy):
         self.update_epsilon(seq_len)
 
     def update_plot(self, r_seq):
+        ''' Update the plot with the given reward sequence and epsilon value '''
         super().update_plot(r_seq)
         self.writer.add_scalar("para/epsilon", self.epsilon, self.total_steps)
 
     def update_epsilon(self, episode_len):
+        ''' Update the epsilon value based on the episode length '''
         self.epsilon = max(self.epsilon - self.epsilon_decay * episode_len, self.epsilon_min)
 
     def hard_update(self):
+        ''' Perform a hard update of the target network '''
         for target_param, param in zip(self.target_network.parameters(), self.network.parameters()):
             target_param.data.copy_(param.data)
 
     def sync(self):
+        ''' Synchronize the current state of the DQN policy '''
         data = super().sync()
         data["epsilon"] = self.epsilon
         return data
@@ -176,6 +191,7 @@ class SAC(BasePolicy):
             self,
             config,
     ):
+        ''' Initialize the SAC policy with configuration settings '''
         super().__init__(config)  # 确保调用基类构造函数
         self.device = torch.device('cuda:0' if torch.cuda.is_available else 'cpu')
 
@@ -216,6 +232,7 @@ class SAC(BasePolicy):
         self.learn_thread.start()
 
     def learn(self):
+        ''' Perform a learning step and return the losses for actor, critic, and entropy coefficient '''
         ent_coef_losses = 0
         ent_coefs = 0
         actor_losses, critic_losses = 0, 0
@@ -294,16 +311,19 @@ class SAC(BasePolicy):
                 }
 
     def soft_update(self):
+        ''' Perform a soft update of the target critic network '''
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * param.data + (1.0 - self.tau) * target_param.data)
 
 
 class OfflineSAC(SAC):
     def __init__(self, config):
+        ''' Initialize the Offline SAC policy with configuration settings '''
         super().__init__(config)
         self.offline_count = 0
 
     def update_network(self, seq_len):
+        ''' Update the network for offline learning based on the sequence length '''
         total_steps = self.total_steps
         total_episodes = self.total_episodes
 

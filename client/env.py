@@ -21,6 +21,9 @@ class WRCGBaseEnv:
     def __init__(self,
                  config,
                  ):
+        """
+        Initialize the WRCGBaseEnv class with configuration parameters.
+        """
         self.game_window_name = "WRCG"
         self.ratio = 1
         self.repeat_nums = 0
@@ -210,9 +213,17 @@ class WRCGBaseEnv:
         return self.highlightRecognizer.check_highlight(img)
 
     def act(self, action):
+        """
+        perform the action
+        """
         raise Exception('not implement')
 
     def step(self, action):
+        """
+        execute a step in the environment with the given action
+        :param action: action to be performed
+        :return: dictionary containing state, action, reward, and done flag
+        """
         # do action
         self.act(action)
 
@@ -270,6 +281,9 @@ class WRCGDiscreteEnv(WRCGBaseEnv):
     def __init__(self,
                  config,
                  ):
+        """
+        Initialize the WRCGDiscreteEnv class with configuration parameters.
+        """
         super().__init__(config)
 
     def calc_reward(self, speed):
@@ -281,6 +295,10 @@ class WRCGDiscreteEnv(WRCGBaseEnv):
         return min(speed, self.reward_max_speed) / self.reward_max_speed * self.reward_coef - self.action_penalty
 
     def act(self, action):
+        """
+        perform the action in discrete environment
+        :param action: action to be performed
+        """
         # do actions
         action_key = self.action_spaces[action]
 
@@ -304,6 +322,9 @@ class WRCGContinuousEnv(WRCGBaseEnv):
     def __init__(self,
                  config,
                  ):
+        """
+        Initialize the WRCGContinuousEnv class with configuration parameters.
+        """
         super().__init__(config)
 
     def calc_reward(self, speed):
@@ -324,6 +345,10 @@ class WRCGContinuousEnv(WRCGBaseEnv):
         return r * self.reward_coef - self.action_penalty
 
     def act(self, action):
+        """
+        perform the action in continuous environment
+        :param action: action to be performed
+        """
         t1 = (action[0] + 1) / 2 / self.fps
         d = 1 if action[1] > 0 else 2
         t2 = abs(action[1]) / self.fps
@@ -348,6 +373,9 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
     """
 
     def __init__(self, config):
+        """
+        Initialize the WRCGLaneEnv class with configuration parameters and lane detection model.
+        """
         super().__init__(config)
 
         # 初始化lane detection模型
@@ -371,6 +399,11 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
         self.lane_model.eval().to("cuda")
 
     def img_preprocess(self, img):
+        """
+        preprocess image for lane detection
+        :param img: raw captured image
+        :return: processed image for lane detection
+        """
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = np.expand_dims(img, axis=-1)
@@ -383,6 +416,7 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
     def calc_reward(self):
         """
         根据速度和车道线计算奖励
+        :return: calculated reward based on speed and lane position
         """
         # 基础速度奖励
         speed_reward = min(np.array(self.states["speed"][-1]),
@@ -418,7 +452,7 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
 
     def get_states(self):
         """
-        get complete states.
+        get complete states including lane information.
         :return: states
         """
         states = {"image": self.states["image"][-1].reshape(-1)}

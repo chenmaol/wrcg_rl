@@ -7,7 +7,10 @@ import threading
 
 
 class ReplayBuffer:
+    """Class to manage a replay buffer for storing and sampling experiences."""
+    
     def __init__(self, config):
+        """Initialize the replay buffer with configuration settings."""
         self.config = config
         self.ptr = 0
         self.size = 0
@@ -23,11 +26,12 @@ class ReplayBuffer:
         self.buffer = self.create_dict_recursively(config)
 
         self.exp_name = config["exp_name"]
-        # self.buffer_idx = 0
+
         if not os.path.exists("buffer"):
             os.mkdir("buffer")
 
     def create_dict_recursively(self, d):
+        """Create a dictionary recursively based on the configuration."""
         new_dict = {}
         for key, value in d.items():
             if key not in self.key_words:
@@ -43,6 +47,7 @@ class ReplayBuffer:
         return new_dict
 
     def update_dict_recursively(self, data_seq, buffer):
+        """Update the buffer dictionary recursively with new data sequences."""
         for key, value in data_seq.items():
             if isinstance(value, dict):
                 self.update_dict_recursively(value, buffer[key])
@@ -51,6 +56,7 @@ class ReplayBuffer:
                 buffer[key][self.ptr:self.ptr + update_len] = value[:update_len]
 
     def sample_dict_recursively(self, buffer, ind):
+        """Sample data from the buffer dictionary recursively based on indices."""
         output = {}
         for key, value in buffer.items():
             if isinstance(value, dict):
@@ -60,6 +66,7 @@ class ReplayBuffer:
         return output
 
     def update(self, data_seq):
+        """Update the replay buffer with new data sequences."""
         self.update_dict_recursively(data_seq, self.buffer)
 
         update_len = min(self.max_size - self.ptr, len(data_seq["reward"]))
@@ -71,15 +78,18 @@ class ReplayBuffer:
         #     self.save_buffer()
 
     def sample(self, batch_size):
+        """Sample a batch of experiences from the replay buffer."""
         ind = np.random.randint(0, self.size, batch_size)
         output = self.sample_dict_recursively(self.buffer, ind)
         return output
 
     # def save_buffer(self):
+    #     """Save the current state of the buffer to disk."""
     #     # np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
     #     threading.Thread(target=self._save_buffer).start()
     #
     # def _save_buffer(self):
+    #     """Threaded function to save the buffer to disk."""
     #     # np.save(f"buffer/{self.exp_name}_{self.buffer_idx}.npy", self.buffer)
     #     buffer_idx = self.save_ptr
     #     self.save_ptr += 1
@@ -89,6 +99,7 @@ class ReplayBuffer:
     #         pickle.dump(sub_buffer, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # def extract_first_n_elements(self, data, idx, new_data=None):
+    #     """Extract the first n elements from the buffer based on the index."""
     #     if new_data is None:
     #         new_data = {}
     #

@@ -10,6 +10,7 @@ LOG_STD_MIN = -20
 
 
 class resnet(torch.nn.Module):
+    """ResNet model class for feature extraction."""
     def __init__(self, layers='18', pretrained=False):
         super(resnet, self).__init__()
         if layers == '18':
@@ -43,6 +44,7 @@ class resnet(torch.nn.Module):
         self.layer4 = model.layer4
 
     def forward(self, x):
+        """Forward pass through the ResNet model."""
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -55,6 +57,7 @@ class resnet(torch.nn.Module):
 
 
 class conv_bn_relu(torch.nn.Module):
+    """Convolutional layer followed by BatchNorm and ReLU activation."""
     def __init__(self,in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=False):
         super(conv_bn_relu,self).__init__()
         self.conv = torch.nn.Conv2d(in_channels,out_channels, kernel_size,
@@ -63,12 +66,14 @@ class conv_bn_relu(torch.nn.Module):
         self.relu = torch.nn.ReLU()
 
     def forward(self,x):
+        """Forward pass through the conv_bn_relu block."""
         x = self.conv(x)
         x = self.bn(x)
         x = self.relu(x)
         return x
 
 class LaneNet(torch.nn.Module):
+    """LaneNet model for lane detection."""
     def __init__(self, size=(288, 800), pretrained=True, backbone='50', cls_dim=(37, 10, 4), use_aux=False):
         super(LaneNet, self).__init__()
 
@@ -124,6 +129,7 @@ class LaneNet(torch.nn.Module):
         initialize_weights(self.cls)
 
     def forward(self, x):
+        """Forward pass through the LaneNet model."""
         # n c h w - > n 2048 sh sw
         # -> n 2048
         x2,x3,fea = self.model(x)
@@ -149,10 +155,12 @@ class LaneNet(torch.nn.Module):
 
 
 def initialize_weights(*models):
+    """Initialize weights for the given models."""
     for model in models:
         real_init_weights(model)
 
 def real_init_weights(m):
+    """Real weight initialization for different layer types."""
     if isinstance(m, list):
         for mini_m in m:
             real_init_weights(mini_m)
@@ -174,6 +182,7 @@ def real_init_weights(m):
 
 
 class MultiInputMLP(nn.Module):
+    """Multi-input MLP for processing various inputs."""
     def __init__(self, config):
         super(MultiInputMLP, self).__init__()
         self.config = config
@@ -192,6 +201,7 @@ class MultiInputMLP(nn.Module):
         self.value = nn.Linear(self.hid_channel, 1)
 
     def forward(self, x):
+        """Forward pass through the MultiInputMLP."""
         f = self.linear(x["image"])
         if self.config["with_speed"]:
             f = torch.cat((f, x["speed"]), dim=1)
@@ -201,6 +211,7 @@ class MultiInputMLP(nn.Module):
 
 
 class MultiInputModel(nn.Module):
+    """Multi-input model for processing image and speed inputs."""
     def __init__(self, config):
         super(MultiInputModel, self).__init__()
         self.config = config
@@ -232,6 +243,7 @@ class MultiInputModel(nn.Module):
         self.value = nn.Linear(self.hid_channel, 1)
 
     def forward(self, x):
+        """Forward pass through the MultiInputModel."""
         f = self.cnn(x["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)
@@ -243,6 +255,7 @@ class MultiInputModel(nn.Module):
 
 
 class MultiInputActor(nn.Module):
+    """Multi-input actor model for policy generation."""
     def __init__(self, config):
         super(MultiInputActor, self).__init__()
         self.config = config
@@ -278,6 +291,7 @@ class MultiInputActor(nn.Module):
         self.epsilon = 1e-6
 
     def forward(self, x, deterministic=False, with_logprob=True):
+        """Forward pass through the MultiInputActor."""
         f = self.cnn(x["image"] / self.norm["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)
@@ -312,6 +326,7 @@ class MultiInputActor(nn.Module):
 
 
 class MultiInputCritic(nn.Module):
+    """Multi-input critic model for value estimation."""
     def __init__(self, config):
         super(MultiInputCritic, self).__init__()
         self.config = config
@@ -352,6 +367,7 @@ class MultiInputCritic(nn.Module):
         )
 
     def forward(self, x, a):
+        """Forward pass through the MultiInputCritic."""
         f = self.cnn(x["image"] / self.norm["image"])
         f = f.view((-1, self.in_features))
         f = self.linear(f)

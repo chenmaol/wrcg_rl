@@ -11,7 +11,10 @@ logging.basicConfig(filename='output.log', level=logging.DEBUG, format='%(asctim
 
 
 class Client:
+    """Client class to handle socket communication and training with the environment."""
+    
     def __init__(self, ip, port):
+        """Initialize the Client with IP and port, set up socket connection and configuration."""
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((ip, port))
 
@@ -31,6 +34,7 @@ class Client:
         self.buffer = self.init_data_buffer(self.config["buffer"])
 
     def init_data_buffer(self, buffer_config):
+        """Initialize the data buffer based on the provided configuration."""
         buffer = {}
         for key, value in buffer_config.items():
             if key not in ["state", "action", "reward", "done"]:
@@ -45,6 +49,7 @@ class Client:
         return buffer
 
     def update_data_buffer(self, data):
+        """Update the data buffer with new data received from the environment."""
         for key, value in data.items():
             if key in self.buffer and isinstance(self.buffer[key], list):
                 self.buffer[key].append(value)
@@ -54,6 +59,7 @@ class Client:
                         self.buffer[key][sub_key].append(sub_value)
 
     def clear_data_buffer(self):
+        """Clear the data buffer to reset its state."""
         for key, value in self.buffer.items():
             if key in self.buffer and isinstance(self.buffer[key], list):
                 self.buffer[key].clear()
@@ -63,10 +69,12 @@ class Client:
                         self.buffer[key][sub_key].clear()
 
     def sync_paras(self):
+        """Synchronize parameters with the received data from the server."""
         received_data = self.get_data()
         self.policy.sync(received_data)
 
     def train(self):
+        """Main training loop for the client, interacting with the environment."""
         while True:
             # reset car
             s = self.env.reset_car()
@@ -90,10 +98,12 @@ class Client:
                     break
 
     def eval(self, checkpoint_path):
+        """Evaluate the model using the specified checkpoint path."""
         pass
 
     # ================= SOCKET FUNCTION ==================
     def get_data(self):
+        """Receive data from the server and return it after unpacking."""
         self.sock.settimeout(self.wait_time)
         data_len = struct.unpack('>Q', self.sock.recv(8))[0]
         data = b''
@@ -109,6 +119,7 @@ class Client:
             raise Exception('数据接收不完整')
 
     def send_data(self):
+        """Send the current data buffer to the server."""
         data = pickle.dumps(self.buffer)
         data_len = len(data)
 

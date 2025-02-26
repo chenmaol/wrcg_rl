@@ -14,8 +14,12 @@ from policy import DQN, SAC
 from buffer import ReplayBuffer
 
 
+
 class Server:
+    """Server class to handle training and inference for the reinforcement learning model."""
+    
     def __init__(self, config_file, run_type="train"):
+        """Initialize the server with configuration and socket setup."""
         with open(config_file, 'r') as f:
             self.config = yaml.load(f.read(), Loader=yaml.FullLoader)
             self.config["run_type"] = run_type
@@ -38,6 +42,7 @@ class Server:
         self.data_idx = 0
 
     def start(self):
+        """Start the server to accept incoming connections and handle training or inference."""
         with tqdm(ncols=100, leave=True) as pbar:
             pbar.set_description(f"training. remained learn times: {self.policy.update_count}")
             while True:
@@ -47,6 +52,7 @@ class Server:
                 t.start()
 
     def load_pretrain_buffer(self, data_root):
+        """Load pre-trained data into the buffer from the specified directory."""
         for data_seq_name in os.listdir(data_root):
             print(data_seq_name)
             with open(os.path.join(data_root, data_seq_name), 'rb') as f:
@@ -57,13 +63,16 @@ class Server:
             self.policy.update(r_seq)
 
     def sync_paras(self, conn):
+        """Synchronize parameters with the connected client."""
         data = self.policy.sync()
         self.send_data(conn, data)
 
     def init_client(self, conn):
+        """Initialize the client connection with configuration data."""
         self.send_data(conn, self.config)
 
     def train(self, conn, addr, pbar):
+        """Handle the training process with the connected client."""
         print(f"connected: {addr}")
         try:
             # init start flag and weights for client
@@ -93,6 +102,7 @@ class Server:
         print(f"disconnected: {addr}")
 
     def infer(self, conn, addr, pbar):
+        """Handle the inference process with the connected client."""
         print(f"connected: {addr}")
         try:
             # init start flag and weights for client
@@ -119,6 +129,7 @@ class Server:
 
     # ================= SOCKET FUNCTION ==================
     def get_data(self, conn):
+        """Receive data from the connected client."""
         conn.settimeout(self.config["policy"]["wait_time"])
         data_len = struct.unpack('>Q', conn.recv(8))[0]
         data = b''
@@ -134,6 +145,7 @@ class Server:
             raise Exception('数据接收不完整')
 
     def send_data(self, conn, data):
+        """Send data to the connected client."""
         data = pickle.dumps(data)
         data_len = len(data)
 
@@ -141,6 +153,7 @@ class Server:
         conn.sendall(data)
 
     def save_data(self, data):
+        """Save the received data to a local file."""
         data_idx = self.data_idx
         self.data_idx += 1
         with open(f"../../data_pool/data_pool/{self.exp_name}_{data_idx}.pkl", 'wb') as f:
