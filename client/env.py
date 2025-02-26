@@ -414,7 +414,7 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
             lateral_deviation = (vehicle_position[0] - closest_point[0]) / (img_w / 2) # -1 ~ 1
             lane_reward = 1 - np.exp(-3 * (1 - np.abs(lateral_deviation)))
 
-        return speed_reward + lane_reward * 0.5 - self.action_penalty
+        return speed_reward + lane_reward * 0.3 - self.action_penalty
 
     def get_states(self):
         """

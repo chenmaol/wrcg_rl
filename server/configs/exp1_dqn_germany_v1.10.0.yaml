@@ -4,7 +4,7 @@ env:
   name: WRCGLaneEnv
   with_speed: &with_speed true
   num_concat_image: 1
-  repeat_thres: 20
+  repeat_thres: 50
   reward_max_speed: 40
   reward_coef: 1
   stack_penalty: 1
@@ -34,7 +34,7 @@ buffer:
         - 1
       type: np.uint8
   action:
-    dim: &action_head 1
+    dim: 1
     type: np.uint8
   reward:
     dim: 1
@@ -44,7 +44,7 @@ buffer:
     type: np.bool_
 policy:
   name: DQN
-  action_head: 4
+  action_head: &action_head 4
   wait_time: 600.0
   model:
     action_head: *action_head
@@ -63,7 +63,7 @@ policy:
     epsilon_steps: !!float 1.0e6
     warmup_steps: 0
     max_episode_length: 1000
-    update_interval: 300
+    update_interval: 100
     target_update_interval: 10
     save_interval: 100
     gradient_steps: 10

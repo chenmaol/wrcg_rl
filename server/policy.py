@@ -155,6 +155,10 @@ class DQN(BasePolicy):
 
         self.update_epsilon(seq_len)
 
+    def update_plot(self, r_seq):
+        super().update_plot(r_seq)
+        self.writer.add_scalar("para/epsilon", self.epsilon, self.total_steps)
+
     def update_epsilon(self, episode_len):
         self.epsilon = max(self.epsilon - self.epsilon_decay * episode_len, self.epsilon_min)
 
