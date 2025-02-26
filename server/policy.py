@@ -81,6 +81,12 @@ class BasePolicy:
         # update network
         self.update_network(len(r_seq), total_steps, total_episodes)
 
+    def sync(self):
+        d = self.get_checkpoint()
+        data = {"checkpoint": {}, "total_steps": self.total_steps}
+        for k, v in d.items():
+            data["checkpoint"][k] = v.cpu().numpy()
+        return data
 
 class DQN(BasePolicy):
     def __init__(
@@ -94,6 +100,7 @@ class DQN(BasePolicy):
         self.network = MultiInputMLP(config["model"]).to(self.device)
         self.target_network = MultiInputMLP(config["model"]).to(self.device)
         self.target_network.load_state_dict(self.network.state_dict())
+        self.target_network.eval()
 
         # training config
         train_config = self.config["training"]
@@ -104,7 +111,6 @@ class DQN(BasePolicy):
         self.epsilon_steps = train_config["epsilon_steps"]
         self.gamma = train_config["gamma"]
         self.batch_size = train_config["batch_size"]
-        self.warmup_steps = train_config["warmup_steps"]
         self.target_update_interval = train_config["target_update_interval"]
         self.update_interval = train_config["update_interval"]
         self.gradient_steps = train_config["gradient_steps"]
@@ -113,9 +119,9 @@ class DQN(BasePolicy):
         self.optimizer = torch.optim.Adam(self.network.parameters(), self.lr)
         self.epsilon_decay = (self.epsilon - self.epsilon_min) / self.epsilon_steps
 
-        self.learn_thread = threading.Thread(target=self.learn_thread)
-        self.learn_thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
-        self.learn_thread.start()
+        self.thread = threading.Thread(target=self.learn_thread)
+        self.thread.daemon = True  # 设置为守护线程，以便主程序退出时子线程也会退出
+        self.thread.start()
 
     def learn(self):
         mean_loss = 0
@@ -132,7 +138,7 @@ class DQN(BasePolicy):
             loss.backward()
             self.optimizer.step()
             mean_loss += loss.item()
-        return mean_loss / self.gradient_steps
+        return {"loss": mean_loss / self.gradient_steps}
 
     def update_network(self, seq_len, total_steps, total_episodes):
         self.update_count += seq_len / self.update_interval
@@ -153,8 +159,13 @@ class DQN(BasePolicy):
         self.epsilon = max(self.epsilon - self.epsilon_decay * episode_len, self.epsilon_min)
 
     def hard_update(self):
-        self.target_network.load_state_dict(self.network.state_dict())
+        for target_param, param in zip(self.target_network.parameters(), self.network.parameters()):
+            target_param.data.copy_(param.data)
 
+    def sync(self):
+        data = super().sync()
+        data["epsilon"] = self.epsilon
+        return data
 
 class SAC(BasePolicy):
     def __init__(

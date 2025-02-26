@@ -6,9 +6,11 @@ import win32gui
 import win32con
 import numpy as np
 import cv2
+import torch
 
 from utils import SpeedRecognizer, HighlightRecognizer, Recorder, Action
 from collections import deque
+from model import LaneNet
 
 
 class WRCGBaseEnv:
@@ -29,7 +31,7 @@ class WRCGBaseEnv:
         self.action_penalty = config["action_penalty"]
         self.gray_scale = config["gray_scale"]
         self.num_concat_image = config["num_concat_image"]
-        self.states = {"image": deque(maxlen=self.num_concat_image)}
+        self.states = {"image": [], "speed": []}
         self.action_spaces = config['action_spaces']
         self.screen_size = (1920, 1080)
         self.resize_size = config["resize_size"]
@@ -38,9 +40,6 @@ class WRCGBaseEnv:
         self.last_time = time.time()
 
         self.with_speed = config["with_speed"]
-        if self.with_speed:
-            self.states["speed"] = deque(maxlen=self.num_concat_image)
-            self.last_speed = None
 
         self.run_type = None
 
@@ -75,8 +74,7 @@ class WRCGBaseEnv:
         if self.gray_scale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             img = np.expand_dims(img, axis=-1)
-        # img = cv2.resize(img, self.resize_size) # TODO
-        img = cv2.resize(img, (800, 288))
+        img = cv2.resize(img, self.resize_size)
         img = np.transpose(img, (2, 0, 1))
         return img
 
@@ -85,9 +83,8 @@ class WRCGBaseEnv:
         get complete states.
         :return: states
         """
-        states = {"image": np.concatenate(list(self.states["image"]), axis=0)}
+        states = {"image": self.states["image"][-1]}
         if self.with_speed:
-            # states["speed"] = np.concatenate(list(self.states["speed"]), axis=0)
             states["speed"] = np.array(self.states["speed"][-1])
         return states
 
@@ -97,18 +94,13 @@ class WRCGBaseEnv:
         """
         self.reset_key()
         self.states["image"].clear()
-        if self.with_speed:
-            self.states["speed"].clear()
+        self.states["speed"].clear()
 
         img = self.get_frame()
-        state = self.img_preprocess(img)
 
-        for i in range(self.num_concat_image):
-            self.states["image"].append(state)
-            if self.with_speed:
-                self.states["speed"].append(np.array([0], dtype=np.uint8))
+        self.update_states(img)
+
         self.repeat_nums = 0
-        self.last_speed = None
 
     def reset_key(self):
         """
@@ -201,7 +193,7 @@ class WRCGBaseEnv:
         """
         return self.speedRecognizer.get_speed(img)
 
-    def calc_reward(self, speed):
+    def calc_reward(self):
         """
         reward function
         :param speed: speed of current state
@@ -227,32 +219,25 @@ class WRCGBaseEnv:
         # get current capture
         img_ = self.get_frame()
 
-        # calc speed
-        speed_ = self.get_speed(img_)
+        # update states
+        self.update_states(img_)
 
         # calc reward
-        reward = self.calc_reward(speed_)
-
-        # update states
-        state_ = self.img_preprocess(img_)
-
-        self.states["image"].append(state_)
-        if self.with_speed:
-            self.states["speed"].append(np.array([speed_], dtype=np.uint8))
+        reward = self.calc_reward()
 
         # if game end
         self.action.move_mouse(self.loc_real(self.highlight_ctr), repeat=5, interval=0.001)
         end = True if self.game_end_check(img_) else False
 
         # if car stack (done)
-        if speed_ == 0:
+        if self.states["speed"][-1] == 0:
             self.repeat_nums += 1
         else:
             self.repeat_nums = 0
 
         done = True if (self.repeat_nums >= self.repeat_thres) or (
-                    self.last_speed and self.last_speed - speed_ > 20) else False
-        self.last_speed = speed_
+                len(self.states["speed"]) > 0 and self.states["speed"][-2] > 30 + self.states["speed"][-1]) else False
+
         if done and not end:
             reward = -self.stack_penalty
 
@@ -265,6 +250,16 @@ class WRCGBaseEnv:
             "reward": np.array(reward).reshape(1),
             "done": np.array(done or end).reshape(1)
         }
+
+    def update_states(self, img):
+        """
+        更新状态，将图像和速度保存到状态中
+        :param img: 当前捕获的图像
+        """
+        speed = self.get_speed(img)  # 获取速度
+        image = self.img_preprocess(img)
+        self.states["image"].append(image)
+        self.states["speed"].append(np.array([speed], dtype=np.uint8))
 
 
 class WRCGDiscreteEnv(WRCGBaseEnv):
@@ -346,3 +341,87 @@ class WRCGContinuousEnv(WRCGBaseEnv):
             self.action.up_key(self.action_spaces[d])
         time.sleep(1 / self.fps - max(t1, t2))
 
+
+class WRCGLaneEnv(WRCGDiscreteEnv):
+    """
+    带有车道线检测的WRCG环境
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        # 初始化lane detection模型
+        self.lane_model = LaneNet(
+            size=(288, 800),
+            pretrained=False,
+            backbone='18',
+            cls_dim=(201, 18, 4),
+            use_aux=False
+        )
+
+        state_dict = torch.load("ep049.pth", map_location='cpu')['model']
+        compatible_state_dict = {}
+        for k, v in state_dict.items():
+            if 'module.' in k:
+                compatible_state_dict[k[7:]] = v
+            else:
+                compatible_state_dict[k] = v
+
+        self.lane_model.load_state_dict(compatible_state_dict, strict=False)
+        self.lane_model.eval().to("cuda")
+
+    def img_preprocess(self, img):
+        if self.gray_scale:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = np.expand_dims(img, axis=-1)
+        img = cv2.resize(img, (800, 288)) / 255.
+        img = torch.from_numpy(np.transpose(img, (2, 0, 1))).float().unsqueeze(0).to("cuda")
+
+        lane = self.lane_model(img)[..., :2].squeeze().detach().cpu().numpy()
+        return lane
+
+    def calc_reward(self):
+        """
+        根据速度和车道线计算奖励
+        """
+        # 基础速度奖励
+        speed_reward = min(np.array(self.states["speed"][-1]),
+                           self.reward_max_speed) / self.reward_max_speed * self.reward_coef
+
+        # lane reward
+        vehicle_position = (640, 450)
+        img_h, img_w = (800, 1280)
+        col_sample_w = 4
+        lane_line = np.array(self.states["image"][-1])  # shape: (201, 18, 2)
+        out_j = np.argmax(lane_line, axis=0)  # shape: (18, 2)
+        center_lane = []
+
+        row_anchor = [121, 131, 141, 150, 160, 170, 180, 189, 199, 209, 219, 228, 238, 248, 258, 267, 277, 287]
+        for i in range(len(out_j)):  # [18, 2]
+            if out_j[i, 0] > 0 and out_j[i, 1] > 0:
+                center_j = out_j[i, 0] * 0.5 + out_j[i, 1] * 0.5
+                ppp = (int(center_j * col_sample_w * img_w / 800) - 1,
+                       int(img_h * (row_anchor[len(row_anchor) - 1 - i] / 288)) - 1)
+                center_lane.append(ppp)
+        center_lane = np.array(center_lane)
+        lane_reward = 0
+        if len(center_lane) >= 2:
+            distances = np.linalg.norm(center_lane - vehicle_position, axis=1)
+            closest_point_idx = np.argmin(distances)
+            closest_point = center_lane[closest_point_idx]
+
+            # 计算横向偏差（x方向）
+            lateral_deviation = (vehicle_position[0] - closest_point[0]) / (img_w / 2) # -1 ~ 1
+            lane_reward = 1 - np.exp(-3 * (1 - np.abs(lateral_deviation)))
+
+        return speed_reward + lane_reward * 0.5 - self.action_penalty
+
+    def get_states(self):
+        """
+        get complete states.
+        :return: states
+        """
+        states = {"image": self.states["image"][-1].reshape(-1)}
+        if self.with_speed:
+            states["speed"] = np.array(self.states["speed"][-1])
+        return states

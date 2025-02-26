@@ -3,7 +3,7 @@ import struct
 import pickle
 import copy
 from policy import DQN, SAC
-from env import WRCGDiscreteEnv, WRCGContinuousEnv
+from env import WRCGDiscreteEnv, WRCGContinuousEnv, WRCGLaneEnv
 
 import logging
 
@@ -64,8 +64,7 @@ class Client:
 
     def sync_paras(self):
         received_data = self.get_data()
-        self.policy.update_weights(received_data["checkpoint"])
-        self.policy.total_steps = received_data["total_steps"]
+        self.policy.sync(received_data)
 
     def train(self):
         while True:

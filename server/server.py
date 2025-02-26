@@ -28,8 +28,6 @@ class Server:
         self.exp_name = self.config["exp"]["name"]
         self.policy = eval(self.config["policy"]["name"])(self.config["policy"])
 
-        #self.policy.load_checkpoint("checkpoints/" + self.config["policy"]["inference"]["checkpoint"])
-
         if run_type == "train":
             self.buffer = eval(self.config["buffer"]["name"])(self.config["buffer"])
             self.policy.buffer = self.buffer
@@ -59,10 +57,7 @@ class Server:
             self.policy.update(r_seq)
 
     def sync_paras(self, conn):
-        d = self.policy.get_checkpoint()
-        data = {"checkpoint": {}, "total_steps": self.policy.total_steps}
-        for k, v in d.items():
-            data["checkpoint"][k] = v.cpu().numpy()
+        data = self.policy.sync()
         self.send_data(conn, data)
 
     def init_client(self, conn):
@@ -87,7 +82,7 @@ class Server:
                 # send back start flag and weights
                 self.sync_paras(conn)
                 # save data into local file
-                self.save_data(data_seq)
+                #self.save_data(data_seq)
 
                 pbar.update(len(r_seq))
                 pbar.set_description(f"Current Value: {self.policy.update_count:.2f}")
