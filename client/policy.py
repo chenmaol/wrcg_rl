@@ -6,16 +6,18 @@ import torch
 class DQN:
     def __init__(self, config):
         self.device = "cuda"
+
         self.epsilon = 0.8
         self.total_steps = 0
 
         self.model = MultiInputMLP(config["model"]).to(self.device)
+        self.warmup_steps = config["training"]["warmup_steps"]
         self.action_head = config["action_head"]
         self.config = config
 
     @torch.no_grad()
     def act(self, x, training=True):
-        if training and np.random.rand() < self.epsilon:
+        if training and (self.total_steps < self.warmup_steps or np.random.rand() < self.epsilon):
             a = np.random.randint(0, self.action_head)
         else:
             x = self.preprocess(x)
