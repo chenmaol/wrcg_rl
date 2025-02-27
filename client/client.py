@@ -2,8 +2,8 @@ import socket
 import struct
 import pickle
 import copy
-from policy import DQN, SAC
-from env import WRCGDiscreteEnv, WRCGContinuousEnv, WRCGLaneEnv
+from policy import *
+from env import *
 
 import logging
 

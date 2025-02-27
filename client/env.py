@@ -249,8 +249,8 @@ class WRCGBaseEnv:
         done = True if (self.repeat_nums >= self.repeat_thres) or (
                 len(self.states["speed"]) > 0 and self.states["speed"][-2] > 30 + self.states["speed"][-1]) else False
 
-        if done and not end:
-            reward = -self.stack_penalty
+        # if done and not end:
+        #     reward = -self.stack_penalty
 
         if end:
             self.reset_game()
@@ -446,9 +446,9 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
 
             # 计算横向偏差（x方向）
             lateral_deviation = (vehicle_position[0] - closest_point[0]) / (img_w / 2) # -1 ~ 1
-            lane_reward = 1 - np.exp(-3 * (1 - np.abs(lateral_deviation)))
+            lane_reward = 1 - np.exp(-5 * (1 - np.abs(lateral_deviation)))
 
-        return speed_reward + lane_reward * 0.3 - self.action_penalty
+        return speed_reward - (1 - lane_reward) * 0.2 - self.action_penalty
 
     def get_states(self):
         """
@@ -459,3 +459,27 @@ class WRCGLaneEnv(WRCGDiscreteEnv):
         if self.with_speed:
             states["speed"] = np.array(self.states["speed"][-1])
         return states
+
+class WRCGLaneFixedSpeedEnv(WRCGLaneEnv):
+    """
+    带有车道线检测的WRCG环境
+    """
+
+    def act(self, action):
+        # do actions
+        action_key = self.action_spaces[action]
+
+        # wait for last action finished
+        while time.time() - self.last_time < 1 / self.fps:
+            pass
+        self.reset_key()
+        self.last_time = time.time()
+
+        speed = self.states["speed"][-1] if len(self.states["speed"]) > 0 else 0
+        if speed > 20:
+            self.action.down_key('w')
+
+        # do current action
+        for key in ['w', 's', 'a', 'd']:
+            if key in action_key:
+                self.action.down_key(key)
